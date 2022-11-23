@@ -1,0 +1,102 @@
+import numpy as np
+# assuming data.csv is a CSV file with the 1st row being the names names for
+# the columns
+def GetUpdateTimestep(algorithm):
+    """Returns the requested time value, or None if not present"""
+    executive = algorithm.GetExecutive()
+    outInfo = executive.GetOutputInformation(0)
+    return outInfo.Get(executive.UPDATE_TIME_STEP()) \
+              if outInfo.Has(executive.UPDATE_TIME_STEP()) else None
+
+
+req_time = GetUpdateTimestep(self)
+
+data = np.genfromtxt("./csv/particles_positions_{0}.csv".format(str(int(req_time))), dtype=None, delimiter=',', autostrip=True)
+
+
+points = vtk.vtkPoints()
+points.SetNumberOfPoints(len(data))
+
+for i in range(1,len(data)):
+    points.SetPoint(i,data[i])
+
+
+
+output.SetPoints(points)
+
+
+#output.RowData.append(data, "Particles")
+output.GetInformation().Set(output.DATA_TIME_STEP(), req_time)
+
+---------------------
+import numpy as np
+# assuming data.csv is a CSV file with the 1st row being the names names for
+# the columns
+
+
+def GetUpdateTimestep(algorithm):
+    """Returns the requested time value, or None if not present"""
+    executive = algorithm.GetExecutive()
+    outInfo = executive.GetOutputInformation(0)
+    return outInfo.Get(executive.UPDATE_TIME_STEP()) \
+              if outInfo.Has(executive.UPDATE_TIME_STEP()) else None
+
+
+req_time = GetUpdateTimestep(self)
+data = np.genfromtxt("./csv/particles_positions_{0}.csv".format(str(int(req_time))), dtype=None, delimiter=',', autostrip=True)
+
+
+output.GetInformation().Set(output.DATA_TIME_STEP(), req_time)
+output.RowData.append(data[:,0], "X")
+output.RowData.append(data[:,1], "Y")
+output.RowData.append(data[:,2], "Z")
+
+
+------------------------------------
+import glob
+import os
+import builtins
+import re
+
+# Code for 'RequestInformation Script'.
+def setOutputTimesteps(algorithm, timesteps):
+    executive = algorithm.GetExecutive()
+    outInfo = executive.GetOutputInformation(0)
+
+    outInfo.Remove(executive.TIME_STEPS())
+    for timestep in timesteps:
+        outInfo.Append(executive.TIME_STEPS(), timestep)
+
+    outInfo.Remove(executive.TIME_RANGE())
+    outInfo.Append(executive.TIME_RANGE(), timesteps[0])
+    outInfo.Append(executive.TIME_RANGE(), timesteps[-1])
+
+# As an example, let's say we have 4 files in the file series that we
+# want to say are producing time 0, 10, 20, and 30
+
+list_of_files = glob.glob('./csv/particles_positions_*.csv') # * means all if need specific format then *.csv
+number_of_files = builtins.max(list_of_files,key=os.path.getctime)
+last_timestep=re.findall(r'\d+',number_of_files)
+
+
+setOutputTimesteps(self, range(0,int(last_timestep[0])+1))
+
+
+
+
+--------------------------------------
+
+import time
+import os
+
+if not hasattr(self, "_my_time"):
+  setattr(self, "_my_time", time.time())
+
+t = time.time()
+lastTime = getattr(self, "_my_time")
+# adapt here to set the time (in sec) you want to wait between updates
+if t - lastTime > 3 and os.path.exists('./csv/'): # Does not update if no file are existing
+  setattr(self, "_my_time", t)
+  self.SetNeedsUpdate(True)
+
+
