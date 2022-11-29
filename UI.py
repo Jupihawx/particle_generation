@@ -38,7 +38,7 @@ def write_values(*arg): # Used to write down the value on the csv
 
 def simulate():
     write_values()
-    os.system("pvpython Particle_Simulation.py")
+    os.system("/home/boris/opt/ParaView-build/paraview_build/bin/pvpython Particle_Simulation_parquet.py")
 
 def rgb_to_hex(rgb):
     return '%02x%02x%02x' % rgb
@@ -148,13 +148,13 @@ drop.configure(foreground="#"+str(rgb_to_hex((wr.get(),wg.get(),wb.get())))) #In
 Button(master, text='Update', command=update_colors,pady=5,padx=5).pack()
 
 
-w1 = Scale(master, from_=-300, to=300,orient=HORIZONTAL,length=300, label='X',width=30)
+w1 = Scale(master, from_=-1000, to=1000,orient=HORIZONTAL,length=300, label='X',width=30)
 w1.set(df.loc[0, 'center_x']) #this lines are just to initialize on the first opening 
 w1.pack()
-w2 = Scale(master, from_=-300, to=300,orient=HORIZONTAL,length=300, label='Y',width=30)
+w2 = Scale(master, from_=-1000, to=1000,orient=HORIZONTAL,length=300, label='Y',width=30)
 w2.set(df.loc[0, 'center_y'])
 w2.pack()
-w3 = Scale(master, from_=0, to=500,orient=HORIZONTAL,length=300, label='Z',width=30)
+w3 = Scale(master, from_=0, to=300,orient=HORIZONTAL,length=300, label='Z',width=30)
 w3.set(df.loc[0, 'center_z'])
 w3.pack()
 w4 = Scale(master, from_=0, to=300,orient=HORIZONTAL,length=300, label='Number of points',width=30)
@@ -163,7 +163,7 @@ w4.pack()
 w5 = Scale(master, from_=0, to=30,orient=HORIZONTAL,length=300, label='Radius',width=30)
 w5.set(df.loc[0, 'radius_points'])
 w5.pack()
-w6 = Scale(master, from_=0, to=100,orient=HORIZONTAL,length=300, label='Diffusion coefficient',width=30)
+w6 = Scale(master, from_=0, to=10, resolution=0.1, orient=HORIZONTAL,length=300, label='Diffusion coefficient',width=30)
 w6.set(df.loc[0, 'diffCoeff'])
 w6.pack()
 w7 = Scale(master, from_=-180, to=180,orient=HORIZONTAL,length=300, label='Velocity direction (°)',width=30)

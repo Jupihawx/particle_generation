@@ -1,0 +1,14 @@
+*deg
+1
+algorithms
+constant
+system
+*.vtm
+*.foam
+Magic*
+python_shell*
+update_csv.py
+csv
+.venv
+.ipynb_checkpoints/
+jupyter_test.ipynb

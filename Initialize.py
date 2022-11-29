@@ -1,6 +1,6 @@
 from paraview.simple import *
 paraview.simple._DisableFirstRenderCameraReset()
-buildingsstl = STLReader(registrationName='buildings.stl', FileNames=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/constant/triSurface/buildings.stl'])
+buildingsstl = STLReader(registrationName='buildings.stl', FileNames=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/constant/triSurface/buildings.stl']) # Load the STL for graphical representation
 renderView1 = GetActiveViewOrCreate('RenderView')
 
 # show data in view
@@ -66,8 +66,11 @@ liveProgrammableSource1.PythonPath = ''
 liveProgrammableSource1.ScriptCheckNeedsUpdate = ''
 
 # Properties modified on liveProgrammableSource1
-liveProgrammableSource1.OutputDataSetType = 'vtkTable'
-liveProgrammableSource1.Script = """import numpy as np
+liveProgrammableSource1.OutputDataSetType = 'vtkTable' 
+
+## This script reads the existing parquet file series and display them at the correct time step
+liveProgrammableSource1.Script = """import numpy as np 
+import pandas as pd
 # assuming data.csv is a CSV file with the 1st row being the names names for
 # the columns
 
@@ -81,15 +84,20 @@ def GetUpdateTimestep(algorithm):
 
 
 req_time = GetUpdateTimestep(self)
-data = np.genfromtxt("./csv/particles_positions_{0}.csv".format(str(int(req_time))), dtype=None, delimiter=\',\', autostrip=True)
+#data = np.genfromtxt("./csv/particles_positions_{0}.csv".format(str(int(req_time))), dtype=None, delimiter=\',\', autostrip=True)
+data = pd.read_parquet("./csv/particles_positions_{0}.parquet".format(str(int(req_time))))
+
+
 current_time_file= open("./current_time.txt","w+")
 current_time_file.write(str(int(req_time)))
 
 output.GetInformation().Set(output.DATA_TIME_STEP(), req_time)
-output.RowData.append(data[:,0], "X")
-output.RowData.append(data[:,1], "Y")
-output.RowData.append(data[:,2], "Z")
+output.RowData.append(data.values[:,0], "X")
+output.RowData.append(data.values[:,1], "Y")
+output.RowData.append(data.values[:,2], "Z")
 """
+
+# This scripts generate timesteps corresponding to the number of parquet file existing for paraview
 liveProgrammableSource1.ScriptRequestInformation = """import glob
 import os
 import builtins
@@ -113,7 +121,7 @@ def setOutputTimesteps(algorithm, timesteps):
 
 
 try:
-    list_of_files = glob.glob('./csv/particles_positions_*.csv') # * means all if need specific format then *.csv
+    list_of_files = glob.glob('./csv/particles_positions_*.parquet') # * means all if need specific format then *.csv
     number_of_files = builtins.max(list_of_files,key=os.path.getctime)
     last_timestep=re.findall(r'\d+',number_of_files)
     setOutputTimesteps(self, range(0,int(last_timestep[0])+1))
@@ -123,6 +131,7 @@ except:
     
 """
 liveProgrammableSource1.PythonPath = ''
+# This script updates the source every second
 liveProgrammableSource1.ScriptCheckNeedsUpdate = """
 import time
 import os
@@ -220,6 +229,6 @@ tableToPoints1Display.WriteLog = ''
 # update the view to ensure updated data information
 renderView1.Update()
 
-exec(open("./update.py").read())
+exec(open("./update.py").read()) # Important script for live update
 
     #exec(open("./Initialize.py").read())

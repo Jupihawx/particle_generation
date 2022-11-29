@@ -106,18 +106,35 @@ def update_position(position,velocity,timestep):
     return new_position
 
 def check_out_of_bounds(particles,limits,number_of_new_particles_per_timestep): #MODIFY THIS IN FUTURE TO READ FROM PARAVIEW THE BOUNDS
-    particles_to_check=particles[number_of_new_particles_per_timestep:] # Checks only the number of new particles because they are the most likely to be outside of bounds, even though its not 100% they would get removed in the next few steps anyway.
+    particles_to_check=particles[number_of_new_particles_per_timestep*5:] # Checks only the number of new particles because they are the most likely to be outside of bounds, even though its not 100% they would get removed in the next few steps anyway.
     indexes=[]
     global particles_out_of_bound
     limit_x=limits[0]
     limit_y=limits[1]
     limit_z=limits[2]
-    for index, particle in enumerate(particles_to_check):
-        if limit_x[0]>particle[0] or particle[0]>limit_x[1] or limit_y[0]>particle[1] or particle[1]>limit_y[1] or limit_z[0]>particle[2] or particle[2]>limit_z[1]:
-            indexes.append(index)
-            particles_out_of_bound = True
 
-    return np.delete(particles,indexes,0), particles_out_of_bound
+    #Since the field is a Cylinder, this is to allow faster computation, if the bounds are not a cylinder, this does not work!!
+
+
+    #for index, particle in enumerate(particles_to_check):
+     #   if limit_x[0]>particle[0] or particle[0]>limit_x[1] or limit_y[0]>particle[1] or particle[1]>limit_y[1] or limit_z[0]>particle[2] or particle[2]>limit_z[1]:
+      #      indexes.append(index)
+       #     particles_out_of_bound = True
+
+
+    indexes_outside_x=[i for i,v in enumerate(particles[:,0]) if limit_x[0] > v or v > limit_x[1]]
+    indexes_outside_y=[i for i,v in enumerate(particles[:,1]) if limit_y[0] > v or v > limit_y[1]]
+    indexes_outside_z=[i for i,v in enumerate(particles[:,2]) if limit_z[0] > v or v > limit_z[1]]
+
+    indexes=np.concatenate((indexes_outside_x,indexes_outside_y,indexes_outside_z), axis=0)
+
+    if indexes.any():
+        indexes=indexes.astype(int)
+        particles_out_of_bound = True
+        return np.delete(particles,indexes,0), particles_out_of_bound
+    else:
+        return particles, particles_out_of_bound
+
 
 
 def brownian_motion(particles,coefficient_diffusion,timestep):
