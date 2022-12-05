@@ -8,7 +8,7 @@ system
 Magic*
 python_shell*
 update_csv.py
-csv
+csv*
 .venv
 .ipynb_checkpoints/
 jupyter_test.ipynb

@@ -84,17 +84,37 @@ def GetUpdateTimestep(algorithm):
 
 
 req_time = GetUpdateTimestep(self)
-#data = np.genfromtxt("./csv/particles_positions_{0}.csv".format(str(int(req_time))), dtype=None, delimiter=\',\', autostrip=True)
-data = pd.read_parquet("./csv/particles_positions_{0}.parquet".format(str(int(req_time))))
+data=np.empty([1,3])
+data_x=data[:,0]
+data_y=data[:,1]
+data_z=data[:,2]
 
+for i in range(0,6):
+    try:
+        current_data=pd.read_parquet("./csv{1}/particles_positions_{0}.parquet".format(str(int(req_time)),i)).values
+        data_x=np.concatenate((data_x,current_data[:,0]))
+        data_y=np.concatenate((data_y,current_data[:,1]))
+        data_z=np.concatenate((data_z,current_data[:,2]))
+        
+    except:
+        pass
 
 current_time_file= open("./current_time.txt","w+")
 current_time_file.write(str(int(req_time)))
 
 output.GetInformation().Set(output.DATA_TIME_STEP(), req_time)
-output.RowData.append(data.values[:,0], "X")
-output.RowData.append(data.values[:,1], "Y")
-output.RowData.append(data.values[:,2], "Z")
+
+data_x=np.delete(data_x,0)
+data_y=np.delete(data_y,0)
+data_z=np.delete(data_z,0)
+
+
+output.RowData.append(data_x, "X")
+output.RowData.append(data_y, "Y")
+output.RowData.append(data_z, "Z")
+
+
+
 """
 
 # This scripts generate timesteps corresponding to the number of parquet file existing for paraview
@@ -119,14 +139,25 @@ def setOutputTimesteps(algorithm, timesteps):
 # As an example, let's say we have 4 files in the file series that we
 # want to say are producing time 0, 10, 20, and 30
 
+max_timestep=0
 
 try:
-    list_of_files = glob.glob('./csv/particles_positions_*.parquet') # * means all if need specific format then *.csv
-    number_of_files = builtins.max(list_of_files,key=os.path.getctime)
-    last_timestep=re.findall(r'\d+',number_of_files)
-    setOutputTimesteps(self, range(0,int(last_timestep[0])+1))
+    for i in range(0,6):
+        try:
+            list_of_files = glob.glob('./csv{0}/particles_positions_*.parquet'.format(i))
+            number_of_files = builtins.max(list_of_files,key=os.path.getctime)
+            last_timestep=re.findall(r'\d+',number_of_files)
+            latest_timestep=int(last_timestep[-1])
+            if latest_timestep > max_timestep:
+                max_timestep=latest_timestep
+        except:
+            pass
+
+    setOutputTimesteps(self, range(0,max_timestep+1))
+
 except:
     setOutputTimesteps(self, 0)
+
 
     
 """
@@ -163,16 +194,12 @@ liveProgrammableSourcePointer.OutputDataSetType = 'vtkTable'
 liveProgrammableSourcePointer.Script = """import pandas as pd
 
 df = pd.read_csv("points_data.csv") # data controlling the points
-ids = df.index[df['currently_selected'] == 1].tolist()
-
-x=df.loc[ids[0], 'center_x']
-y=df.loc[ids[0], 'center_y']
-z=df.loc[ids[0], 'center_z']
-
+x=df.loc[0, 'center_x']
+y=df.loc[0, 'center_y']
+z=df.loc[0, 'center_z']
 output.RowData.append(x, "X")
 output.RowData.append(y, "Y")
 output.RowData.append(z, "Z")
-
 """
 
 liveProgrammableSourcePointer.PythonPath = ''

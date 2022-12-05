@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import os
 import shutil
+import time
 
 #### disable automatic camera reset on 'Show'
 paraview.simple._DisableFirstRenderCameraReset()
@@ -157,11 +158,16 @@ particles_out_of_bound=False
 
 
 #ReplaceReaderFileName(afoam, ['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/avtm.vtm'], 'FileName')
-
+last_time=time.time()
+simulationProgressFile= open("./Simulation_Progress.txt","w")
 
 for i in range(current_time,total_time,dt): # Like so, only the time from the current paraview window will be modified
 
+    live_time=time.time()
 
+    if live_time-last_time >= 1:
+        simulationProgressFile.write("Simulating... Currently at {0}%".format((i-current_time)/(total_time-current_time)*100))
+        last_time=live_time
 
 
     updated_position=update_position(position,data,dt)

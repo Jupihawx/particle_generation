@@ -10,22 +10,29 @@ import pandas as pd
 import numpy as np
 import os
 import shutil
+import time
+import argparse
 
-#### disable automatic camera reset on 'Show'
+parser = argparse.ArgumentParser(description='Particle simulation script.')
+parser.add_argument("--id", help="Choose the id of the particle case to simulate.", type=int)
+args = parser.parse_args()
+current_case=args.id
+
+##### disable automatic camera reset on 'Show'
 paraview.simple._DisableFirstRenderCameraReset()
 
 injection_data = pd.read_csv("./points_data.csv") # CSV with info about the injection and time simulation
 
-injection_position=[int(injection_data.loc[0, 'center_x']),int(injection_data.loc[0, 'center_y']),int(injection_data.loc[0, 'center_z'])]
+injection_position=[int(injection_data.loc[current_case, 'center_x']),int(injection_data.loc[current_case, 'center_y']),int(injection_data.loc[current_case, 'center_z'])]
 
-injection_radius=int(injection_data.loc[0, 'radius_points'])
-injection_amount=int(injection_data.loc[0, 'number_points'])
-coefficient_diffusion=float(injection_data.loc[0, 'diffCoeff'])
+injection_radius=int(injection_data.loc[current_case, 'radius_points'])
+injection_amount=int(injection_data.loc[current_case, 'number_points'])
+coefficient_diffusion=float(injection_data.loc[current_case, 'diffCoeff'])
 
 
 
-total_time=int(injection_data.loc[0, 'total_time'])
-dt=int(injection_data.loc[0, 'dt'])
+total_time=int(injection_data.loc[current_case, 'total_time'])
+dt=int(injection_data.loc[current_case, 'dt'])
 
 time_steps=total_time*dt
 
@@ -36,7 +43,7 @@ current_time_file=open("./current_time.txt","r") # Used to select at what time t
 current_time=int(current_time_file.read())
 
 
-wind_direction=injection_data.loc[0,'Velocity direction']
+wind_direction=injection_data.loc[current_case,'Velocity direction']
 
 afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/{0}deg.vtm'.format(wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
 afoam.CellArrayStatus = ['U']
@@ -44,9 +51,14 @@ afoam.PointArrayStatus = ['U']
 
 
 
-def generate_init(center,radius,number_of_particles): # Used to generate the intial files
+def moving_injection_position(destination_point, time): # Format imput : [[x y z t];[x1 y1 z1 t1]]
+    return [int(injection_data.loc[current_case, 'center_x'])*(1-time)+destination_point[0]*time,int(injection_data.loc[current_case, 'center_y'])*(1-time)+destination_point[1]*time,int(injection_data.loc[current_case, 'center_z'])*(1-time)+destination_point[2]*time ]
+        
 
-    path="./csv"
+
+def generate_init(center,radius,number_of_particles,current_case,current_time): # Used to generate the intial files
+
+    path="./csv{0}".format(str(current_case))
     isExist= os.path.exists(path)
     if not isExist:
         os.makedirs(path)
@@ -59,25 +71,25 @@ def generate_init(center,radius,number_of_particles): # Used to generate the int
                          "2": positions[:,1],
                          "3": positions[:,2]})
 
-    pd.DataFrame(df_i).to_parquet('./csv/particles_positions.parquet',index=None,compression=None) # Using parquet since it is way faster to write/read. Only issue is the need to compile your own version of paraview so the library pyarrow is included (venv)
-    pd.DataFrame(df_i).to_parquet('./csv/particles_positions_0.parquet',index=None,compression=None)
+    pd.DataFrame(df_i).to_parquet('./csv{0}/particles_positions.parquet'.format(str(current_case)),index=None,compression=None) # Using parquet since it is way faster to write/read. Only issue is the need to compile your own version of paraview so the library pyarrow is included (venv)
+    pd.DataFrame(df_i).to_parquet('./csv{0}/particles_positions_{1}.parquet'.format(str(current_case),str(current_time)),index=None,compression=None)
 
 
 
 if current_time==0: #Only generate the starting position if the user generates new particles at time 0.
-    generate_init(injection_position,injection_radius,injection_amount)
+    generate_init(injection_position,injection_radius,injection_amount,current_case,current_time)
 
 programmableSource1 = ProgrammableSource(registrationName='ProgrammableSource1') # This source represents the "reader" of the parquet files. Themselves being the positions of the particles at a given time
 programmableSource1.OutputDataSetType = 'vtkTable'
 programmableSource1.Script = """import numpy as np
 import pandas as pd
 
-data = pd.read_parquet("./csv/particles_positions.parquet")
+data = pd.read_parquet("./csv{0}/particles_positions.parquet")
 
 output.RowData.append(data.values[:,0], "X")
 output.RowData.append(data.values[:,1], "Y")
 output.RowData.append(data.values[:,2], "Z")
-"""
+""".format(str(current_case))
 
 
 # create a new 'Table To Points'
@@ -114,7 +126,7 @@ def check_out_of_bounds(particles,limits,number_of_new_particles_per_timestep): 
     limit_y=limits[1]
     limit_z=limits[2]
 
-    indexes_outside_x=[i for i,v in enumerate(particles[:,0]) if limit_x[0] > v or v > limit_x[1]]
+    indexes_outside_x=[i for i,v in enumerate(particles[:,0]) if limit_x[0] > v or v > limit_x[1]] # if bug, replace particles_to_check with particles
     indexes_outside_y=[i for i,v in enumerate(particles[:,1]) if limit_y[0] > v or v > limit_y[1]]
     indexes_outside_z=[i for i,v in enumerate(particles[:,2]) if limit_z[0] > v or v > limit_z[1]]
 
@@ -136,8 +148,13 @@ def brownian_motion(particles,coefficient_diffusion,timestep): # Simple generati
 
 
 
-shutil.copyfile('./csv/particles_positions_{0}.parquet'.format(current_time),'./csv/particles_positions.parquet') # This copies the user displayed time as the current csv file, used for simulation
 
+
+
+try:
+    shutil.copyfile('./csv{1}/particles_positions_{0}.parquet'.format(current_time,current_case),'./csv{0}/particles_positions.parquet'.format(str(current_case))) # This copies the user displayed time as the current csv file, used for simulation when the user wants to continue the simulation that already have happenened
+except:
+    generate_init(injection_position,injection_radius,injection_amount,current_case,current_time) # In the case that the user creates a simulation at a time different than 0, but that there is no previous particles (case above)
 
 vtk_data=sm.Fetch(resampleWithDataset1) # This is the key commmand that gets the info from paraview, but also the slowest in this script since it calls for UpdatePipeline() in the client side of paraview, which takes time and explain why the code is not fully real time.
 vtk_data = dsa.WrapDataObject(vtk_data)
@@ -146,7 +163,22 @@ position= np.array(vtk_data.Points)
 particles_out_of_bound=False
 
 
+last_time=time.time()
+
+target_point=[30,-300,300] # Modify this point if you want your injection to move linearly to this point
+
 for i in range(current_time,total_time,dt): # Like so, only the time from the current paraview window will be modified
+
+    live_time=time.time() #Below lines used to inform the user of the current progress of the simulation in the CLI
+    if live_time-last_time >= 1 or i==total_time-dt:
+        if i< total_time-dt:
+            os.system('clear')
+            print("Simulating from {1}s to {2}s. You can already display the particles in ParaView by clicking the start icon. \n Currently at {0}% ({3}s)".format((int((i-current_time)/((total_time-dt)-current_time)*100)), current_time, total_time, i*dt))
+        else:
+            os.system('clear')
+            print("Simulation Done!")
+        last_time=live_time
+
 
 
     updated_position=update_position(position,data,dt) # Update the positionn
@@ -158,8 +190,8 @@ for i in range(current_time,total_time,dt): # Like so, only the time from the cu
     updated_position=brownian_motion(updated_position,coefficient_diffusion,dt) # Add the brownian motion to the simulated particles
 
 
-    new_points=generate_points(injection_position,injection_radius,injection_amount) # Generate new points
-
+    #new_points=generate_points(injection_position,injection_radius,injection_amount) # Generate new points
+    new_points=generate_points(moving_injection_position(target_point,(i-current_time)*dt/(total_time-current_time)),injection_radius,injection_amount) # Generate new points. Use this line if you want the source to move, otherwise use the one above
 
     position=np.concatenate((updated_position,new_points)) # Add the new points to the existing ones
 
@@ -167,10 +199,10 @@ for i in range(current_time,total_time,dt): # Like so, only the time from the cu
                          "2": position[:,1],
                          "3": position[:,2]})
 
-    pd.DataFrame(df).to_parquet('./csv/particles_positions.parquet',index=None,compression=None) # Write the file to parquet so it can be read by paraview
+    pd.DataFrame(df).to_parquet('./csv{0}/particles_positions.parquet'.format(str(current_case)),index=None,compression=None) # Write the file to parquet so it can be read by paraview
 
 
-    shutil.copyfile("csv/particles_positions.parquet","csv/particles_positions_{0}.parquet".format(i)) # A bit faster than rewritting all
+    shutil.copyfile("csv{0}/particles_positions.parquet".format(str(current_case)),"csv{1}/particles_positions_{0}.parquet".format(i,current_case)) # A bit faster than rewritting all
 
 
     ####### The method below is sub-optimal, because new proxies are being made and remove. But Paraview is stubborn and I could not find any workaround to update an existing source. Yet, this method is still faster than reading through CSV, even though the CSV reader do have a "Reload Files" method.
@@ -186,12 +218,12 @@ for i in range(current_time,total_time,dt): # Like so, only the time from the cu
     import numpy as np
     import pandas as pd
 
-    data = pd.read_parquet("./csv/particles_positions.parquet")
+    data = pd.read_parquet("./csv{0}/particles_positions.parquet")
 
     output.RowData.append(data.values[:,0], "X")
     output.RowData.append(data.values[:,1], "Y")
     output.RowData.append(data.values[:,2], "Z")
-    """
+    """.format(str(current_case))
 
 
     tableToPoints1 = TableToPoints(registrationName='TableToPoints1', Input=programmableSource1)

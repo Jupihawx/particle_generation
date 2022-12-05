@@ -12,6 +12,7 @@ def update(): # This script update the reading of the data from the filter, as w
         try:
             time.sleep(1.0 - ((time.time() - starttime) % 1.0))
             source.UpdatePipelineInformation()
+            #Render()
         except:
             pass
 
