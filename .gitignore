@@ -12,3 +12,4 @@ csv*
 .venv
 .ipynb_checkpoints/
 jupyter_test.ipynb
+cases

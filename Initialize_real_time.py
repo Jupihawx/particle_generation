@@ -92,7 +92,7 @@ data_z=data[:,2]
 current_time_simulated_file= open("./current_time_simulated.txt","r")
 simulation_time=int(current_time_simulated_file.read())
 
-if req_time > simulation_time-10:
+if req_time > simulation_time-10: # If the vizualisation goes too fast with respect to the simulation, wait a second
     time.sleep(1)
     print("Displaying faster than simulating, waiting for a second..")
 

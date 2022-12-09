@@ -14,17 +14,17 @@ import time
 import argparse
 import builtins
 
-while True:
+while True: # The code is running constantly, either because then pvpython does not have to boot-up again and its faster
 
-    f = open("simulation_requested.txt", "r+")
+    f = open("simulation_requested.txt", "r+") # Checks when the UI requests a simulation, since the code is constantly running in a thread, this allows to launch easily
     simulation_requested=f.read()
 
-    if simulation_requested==str(1):
+    if simulation_requested==str(1): # When the UI sends a notification to this code to run.
         f.truncate(0)
-        f.write("0")
+        f.write("0") # write 0, meaning the code did read the request for simulation and will run
         f.close()
             
-        parser = argparse.ArgumentParser(description='Particle simulation script.')
+        parser = argparse.ArgumentParser(description='Particle simulation script.') # Deprecated code, will need to be updated. This is used to chose which case is simulated. Will need to be modified so that the info is not passed through the parser, but throug the text file above.
         parser.add_argument("--id", help="Choose the id of the particle case to simulate.", type=int)
         args = parser.parse_args()
         current_case=args.id
@@ -47,23 +47,19 @@ while True:
         injection_amount=int(injection_data.loc[current_case, 'number_points'])
         coefficient_diffusion=float(injection_data.loc[current_case, 'diffCoeff'])
 
-
-
         total_time=int(injection_data.loc[current_case, 'total_time'])
         dt=int(injection_data.loc[current_case, 'dt'])
-
         time_steps=total_time*dt
 
         boundaries=[[-2000,2000],[-2000,2000],[0,600]] # Need to be entered by the user, it represents the boundary of the domain being simulated
 
-
-        current_time_file=open("./current_time.txt","r") # Used to select at what time the simulation starts, as well as showing the user the current time
+        current_time_file=open("./current_time.txt","r") # Used so that the back-end (this code), knows what what time it is in the paraview viewer.
         current_time=int(current_time_file.read())
         current_time_file.close()
 
         wind_direction=injection_data.loc[current_case,'Velocity direction']
 
-        afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/{0}deg.vtm'.format(wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
+        afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/{0}deg.vtm'.format(wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
         afoam.CellArrayStatus = ['U']
         afoam.PointArrayStatus = ['U']
 
@@ -184,21 +180,21 @@ output.RowData.append(data.values[:,2], "Z")
 
         last_time=time.time()
 
-        target_point=[30,-300,300] # Modify this point if you want your injection to move linearly to this point
+        #target_point=[30,-300,300] # Modify this point if you want your injection to move linearly to this point
 
-        for i in range(0,total_time,dt):
-            shutil.copyfile("csv{0}/particles_positions.parquet".format(str(current_case)),"csv{1}/particles_positions_{0}.parquet".format(i,current_case)) # A bit faster than rewritting all
+        for i in range(0,total_time,dt): # Create "fake" files that are mostly empty, not necessary but nice to have so that even if somehow paraview displays a case not yet generated, there will be no error message
+            shutil.copyfile("csv{0}/particles_positions.parquet".format(str(current_case)),"csv{1}/particles_positions_{0}.parquet".format(i,current_case)) 
 
         i=0
 
-        simulated_cases= [0, 75, 130, 190]
+        simulated_cases= [0, 75, 130, 190] # List of the simulated cases available for the wind direction.
 
 
-        while i < total_time: # Like so, only the time from the current paraview window will be modified
+        while i < total_time: # The real time simulation mode will run until i reaches the specified time total_time. It is useful to have a long time so that the simulation never really stops.
 
 
-            current_time_simulated_file= open("./current_time_simulated.txt","r+")
-            current_time_simulated_file.write(str(i))
+            current_time_simulated_file= open("./current_time_simulated.txt","r+") 
+            current_time_simulated_file.write(str(i)) # Writes at what time the current simulation is. This will then be used by paraview to know if Paraview displays too fast with respect to the simulation (if it is the case, paraview will pause for a second to let the simulation have some advance)
             current_time_simulated_file.close()
 
             live_time=time.time() #Below lines used to inform the user of the current progress of the simulation in the CLI
@@ -222,7 +218,7 @@ output.RowData.append(data.values[:,2], "Z")
 
 
 
-            updated_position=update_position(position,data,dt) # Update the positionn
+            updated_position=update_position(position,data,dt) # Update the position
 
             if i%dt*10==0 or particles_out_of_bound is True: # Checks every 10 time step or if a particle is detected. Helps to fasten the calculation when particles are still in the domain at the cost of a little blockage of 10 timesteps maximum at one point and once.
                 updated_position, particles_out_of_bound=check_out_of_bounds(updated_position,boundaries,injection_amount)
@@ -250,8 +246,7 @@ output.RowData.append(data.values[:,2], "Z")
 
 
            
-            #Maybe in the future, compare instead of re-reading
-
+            #Used to check the csv values with the previous one
             p_wind_direction=wind_direction
             p_injection_position=injection_position
             p_injection_radius=injection_radius
@@ -260,8 +255,8 @@ output.RowData.append(data.values[:,2], "Z")
           
 
 
-            while True:
-                try:         
+            while True: # This loop is just used due to threading issues that can arise. Basically the code reads really fast the csv file, but when the user modifies it, it can happen that it reads a file being saved, hence creating an error. With this method, the program will retry until there is no error.
+                try:         # Read all the values
                     current_time_file=open("./current_time.txt","r") # Used to select at what time the simulation starts, as well as showing the user the current time
                     current_time=int(current_time_file.read())
                     current_time_file.close()
@@ -274,43 +269,29 @@ output.RowData.append(data.values[:,2], "Z")
 
                     wind_direction=injection_data.loc[current_case,'Velocity direction']
                 except:
-                    continue
-                break
+                    continue # If error, try again
+                break # If not, continue
 
-            if wind_direction not in simulated_cases: # TEMPORARY FIX TO AVOID CRASH FROM LACK. WILL NEED TO BE CHANGED IN THE UI
+            if wind_direction not in simulated_cases: # Simple condition to have the current velocity input from the UI actually snap to the closest actual velocity simulation from the simulation
                 wind_direction=simulated_cases[builtins.min(range(len(simulated_cases)), key = lambda i: abs(simulated_cases[i]-wind_direction))]
 
+                #Below, if a difference is noted between what is currently simulated and what the user input, we need the simulation to go back to the time at which the user is currently to re-do the simulation. Because the simulation does not wait for the paraview time to compute (which makes more sense), it needs to come back in time to simulate the change at the right time
             if p_wind_direction != wind_direction or p_injection_amount != injection_amount or p_injection_radius != injection_radius or p_injection_position != injection_position or p_coefficient_diffusion != coefficient_diffusion:
                 Delete(afoam)
-                i=current_time+3  # Simulate in advance
-                afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/{0}deg.vtm'.format(wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
+                i=current_time+3  # Simulate in advance. Creates a small delay in the vizualization, but is beneficial since it gives a small head-start to the backend
+                afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/{0}deg.vtm'.format(wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
                 afoam.CellArrayStatus = ['U']
                 afoam.PointArrayStatus = ['U']
-                shutil.copyfile("csv{1}/particles_positions_{0}.parquet".format(i,current_case),"csv{0}/particles_positions.parquet".format(str(current_case))) # A bit faster than rewritting all
+                shutil.copyfile("csv{1}/particles_positions_{0}.parquet".format(i,current_case),"csv{0}/particles_positions.parquet".format(str(current_case))) # Copy the requested time as the current time
             
             
-                position=pd.read_parquet("csv{0}/particles_positions.parquet".format(str(current_case))) 
+                position=pd.read_parquet("csv{0}/particles_positions.parquet".format(str(current_case)))  # Now, we "came back" in time and ready to re-simulate the simulation with the new parameters, at the correct time
                 position=position.to_numpy()
             
              
             i=i+1
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            #Below, do all the pvpython side of thing to find the U vector for each position
             Delete(programmableSource1)
             Delete(tableToPoints1)
             Delete(resampleWithDataset1)
