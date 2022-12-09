@@ -3,25 +3,28 @@
 #paraview.compatibility.major = 5
 #paraview.compatibility.minor = 11
 
-from paraview.simple import *
-from paraview.vtk.numpy_interface import dataset_adapter as dsa
-from paraview import servermanager as sm
 import pandas as pd
 import numpy as np
 import os
 import shutil
 import time
 import argparse
+import pyvista as pv
+
+
 
 parser = argparse.ArgumentParser(description='Particle simulation script.')
 parser.add_argument("--id", help="Choose the id of the particle case to simulate.", type=int)
 args = parser.parse_args()
 current_case=args.id
 
+current_case=0 ### A SUPPRIMER SUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMERSUPPRIMER
+ 
+
 ##### disable automatic camera reset on 'Show'
-paraview.simple._DisableFirstRenderCameraReset()
 
 injection_data = pd.read_csv("./points_data.csv") # CSV with info about the injection and time simulation
+
 
 injection_position=[int(injection_data.loc[current_case, 'center_x']),int(injection_data.loc[current_case, 'center_y']),int(injection_data.loc[current_case, 'center_z'])]
 
@@ -45,9 +48,8 @@ current_time=int(current_time_file.read())
 
 wind_direction=injection_data.loc[current_case,'Velocity direction']
 
-afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/{0}deg.vtm'.format(wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
-afoam.CellArrayStatus = ['U']
-afoam.PointArrayStatus = ['U']
+grid = pv.read('test.vtk')
+
 
 
 
@@ -79,29 +81,6 @@ def generate_init(center,radius,number_of_particles,current_case,current_time): 
 if current_time==0: #Only generate the starting position if the user generates new particles at time 0.
     generate_init(injection_position,injection_radius,injection_amount,current_case,current_time)
 
-programmableSource1 = ProgrammableSource(registrationName='ProgrammableSource1') # This source represents the "reader" of the parquet files. Themselves being the positions of the particles at a given time
-programmableSource1.OutputDataSetType = 'vtkTable'
-programmableSource1.Script = """import numpy as np
-import pandas as pd
-
-data = pd.read_parquet("./csv{0}/particles_positions.parquet")
-
-output.RowData.append(data.values[:,0], "X")
-output.RowData.append(data.values[:,1], "Y")
-output.RowData.append(data.values[:,2], "Z")
-""".format(str(current_case))
-
-
-# create a new 'Table To Points'
-tableToPoints1 = TableToPoints(registrationName='TableToPoints1', Input=programmableSource1) # The table to points converts the source above into something usable by paraview
-tableToPoints1.XColumn = 'X'
-tableToPoints1.YColumn = 'Y'
-tableToPoints1.ZColumn = 'Z'
-
-# create a new 'Resample With Dataset'
-resampleWithDataset1 = ResampleWithDataset(registrationName='ResampleWithDataset1', SourceDataArrays=afoam, # This filter takes the particles and the field as input, and outputs the velocity of each particle. This is the main usage of paraview for getting the velocity at a given point, but it would be nice in the future to have another more efficient program to do so.
-    DestinationMesh=tableToPoints1)
-resampleWithDataset1.CellLocator = 'Static Cell Locator'
 
 def generate_points(center,radius,number_of_particles): # Used to generate new points at the injection
 
@@ -156,10 +135,10 @@ try:
 except:
     generate_init(injection_position,injection_radius,injection_amount,current_case,current_time) # In the case that the user creates a simulation at a time different than 0, but that there is no previous particles (case above)
 
-vtk_data=sm.Fetch(resampleWithDataset1) # This is the key commmand that gets the info from paraview, but also the slowest in this script since it calls for UpdatePipeline() in the client side of paraview, which takes time and explain why the code is not fully real time.
-vtk_data = dsa.WrapDataObject(vtk_data)
-data = vtk_data.PointData[0]
-position= np.array(vtk_data.Points)
+
+position= pd.read_parquet("./csv{0}/particles_positions.parquet".format(str(current_case)))
+position=position.to_numpy()
+data=grid.probe(pv.PointSet(position)).point_data.get_array("U")
 particles_out_of_bound=False
 
 
@@ -190,8 +169,8 @@ for i in range(current_time,total_time,dt): # Like so, only the time from the cu
     updated_position=brownian_motion(updated_position,coefficient_diffusion,dt) # Add the brownian motion to the simulated particles
 
 
-    new_points=generate_points(injection_position,injection_radius,injection_amount) # Generate new points
-    #new_points=generate_points(moving_injection_position(target_point,(i-current_time)*dt/(total_time-current_time)),injection_radius,injection_amount) # Generate new points. Use this line if you want the source to move, otherwise use the one above
+    #new_points=generate_points(injection_position,injection_radius,injection_amount) # Generate new points
+    new_points=generate_points(moving_injection_position(target_point,(i-current_time)*dt/(total_time-current_time)),injection_radius,injection_amount) # Generate new points. Use this line if you want the source to move, otherwise use the one above
 
     position=np.concatenate((updated_position,new_points)) # Add the new points to the existing ones
 
@@ -207,45 +186,10 @@ for i in range(current_time,total_time,dt): # Like so, only the time from the cu
 
     ####### The method below is sub-optimal, because new proxies are being made and remove. But Paraview is stubborn and I could not find any workaround to update an existing source. Yet, this method is still faster than reading through CSV, even though the CSV reader do have a "Reload Files" method.
 
-    Delete(programmableSource1)
-    Delete(tableToPoints1)
-    Delete(resampleWithDataset1)
 
 
-    programmableSource1 = ProgrammableSource(registrationName='ProgrammableSource1')
-    programmableSource1.OutputDataSetType = 'vtkTable'
-    programmableSource1.Script = """
-    import numpy as np
-    import pandas as pd
-
-    data = pd.read_parquet("./csv{0}/particles_positions.parquet")
-
-    output.RowData.append(data.values[:,0], "X")
-    output.RowData.append(data.values[:,1], "Y")
-    output.RowData.append(data.values[:,2], "Z")
-    """.format(str(current_case))
-
-
-    tableToPoints1 = TableToPoints(registrationName='TableToPoints1', Input=programmableSource1)
-    tableToPoints1.XColumn = 'X'
-    tableToPoints1.YColumn = 'Y'
-    tableToPoints1.ZColumn = 'Z'
-
-    # create a new 'Resample With Dataset'
-    resampleWithDataset1 = ResampleWithDataset(registrationName='ResampleWithDataset1', SourceDataArrays=afoam,
-        DestinationMesh=tableToPoints1)
-    resampleWithDataset1.CellLocator = 'Static Cell Locator'
-    
-    ###########
-
-
-    vtk_data=sm.Fetch(resampleWithDataset1) 
-
-    vtk_data = dsa.WrapDataObject(vtk_data)
-
-    data = vtk_data.PointData[0]
+    #position= pd.read_parquet("./csv{0}/particles_positions.parquet")
+    data=grid.probe(pv.PointSet(position)).point_data.get_array("U")
 
 
     #exec(open("./Particle_Simulation_parquet.py").read()) # Used to launch the code manually
-
-
