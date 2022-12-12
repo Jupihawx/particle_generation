@@ -12,7 +12,7 @@ import os
 import shutil
 import time
 import argparse
-
+import builtins
 
 while True:
 
@@ -59,13 +59,24 @@ while True:
         boundaries=[[-2000,2000],[-2000,2000],[0,600]] # Need to be entered by the user, it represents the boundary of the domain being simulated
 
 
+        simulated_ang=["0" ,"0.3307", "0.6614" , "0.9921" ,  "1.3228" , "1.6535"  , "1.9842"  , "2.3149"  , "2.6456" ,  "2.9762" , "3.3069", "3.6376 " ,   "3.9683"  ,  "4.2990" ,   "4.6297", " 4.9604",  "5.2911"  ,  "5.6218"  ,  "5.9525"] # ! Case 3.6 et 4.9 missing because problem in the sim??
+        simulated_ang = [int(eval(i)*180/np.pi) for i in simulated_ang] # Convert to °
+        simulated_vel=[5, 10, 15]
+
         current_time_file=open("./current_time.txt","r") # Used to select at what time the simulation starts, as well as showing the user the current time
         current_time=int(current_time_file.read())
 
 
         wind_direction=injection_data.loc[current_case,'Velocity direction']
+        wind_value=injection_data.loc[current_case,'Velocity magnitude']
 
-        afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/{0}deg.vtm'.format(wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
+        if wind_direction not in simulated_ang: # Simple condition to have the current velocity input from the UI actually snap to the closest actual velocity simulation from the simulation
+            wind_direction=simulated_ang[builtins.min(range(len(simulated_ang)), key = lambda i: abs(simulated_ang[i]-wind_direction))]
+
+        if wind_value not in simulated_vel: # Simple condition to have the current velocity input from the UI actually snap to the closest actual velocity simulation from the simulation
+            wind_value=simulated_vel[builtins.min(range(len(simulated_vel)), key = lambda i: abs(simulated_vel[i]-wind_value))]
+
+        afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/val_{0}_ang_{1}.vtm'.format(wind_value,wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
         afoam.CellArrayStatus = ['U']
         afoam.PointArrayStatus = ['U']
 

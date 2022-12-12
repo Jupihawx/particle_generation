@@ -142,7 +142,7 @@ liveProgrammableSource1.ScriptRequestInformation = """def setOutputTimesteps(alg
     outInfo.Append(executive.TIME_RANGE(), timesteps[-1])
 
 
-setOutputTimesteps(self, range(0,1000))
+setOutputTimesteps(self, range(0,10000))
 
 """
 liveProgrammableSource1.PythonPath = ''

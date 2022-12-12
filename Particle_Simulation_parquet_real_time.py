@@ -57,9 +57,24 @@ while True: # The code is running constantly, either because then pvpython does 
         current_time=int(current_time_file.read())
         current_time_file.close()
 
-        wind_direction=injection_data.loc[current_case,'Velocity direction']
 
-        afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/{0}deg.vtm'.format(wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
+        simulated_ang=["0" ,"0.3307", "0.6614" , "0.9921" ,  "1.3228" , "1.6535"  , "1.9842"  , "2.3149"  , "2.6456" ,  "2.9762" , "3.3069", "3.6376 " ,   "3.9683"  ,  "4.2990" ,   "4.6297", " 4.9604", "5.2911"  ,  "5.6218"  ,  "5.9525"] # ! Case 3.6 et 4.9 missing because problem in the sim??
+        simulated_ang = [int(eval(i)*180/np.pi) for i in simulated_ang] # Convert to °
+        simulated_vel=[5, 10, 15]
+
+
+
+        wind_direction=injection_data.loc[current_case,'Velocity direction']
+        wind_value=injection_data.loc[current_case,'Velocity magnitude']
+
+        if wind_direction not in simulated_ang: # Simple condition to have the current velocity input from the UI actually snap to the closest actual velocity simulation from the simulation
+            wind_direction=simulated_ang[builtins.min(range(len(simulated_ang)), key = lambda i: abs(simulated_ang[i]-wind_direction))]
+
+        if wind_value not in simulated_vel: # Simple condition to have the current velocity input from the UI actually snap to the closest actual velocity simulation from the simulation
+            wind_value=simulated_vel[builtins.min(range(len(simulated_vel)), key = lambda i: abs(simulated_vel[i]-wind_value))]
+
+
+        afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/val_{0}_ang_{1}.vtm'.format(int(wind_value),int(wind_direction))]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
         afoam.CellArrayStatus = ['U']
         afoam.PointArrayStatus = ['U']
 
@@ -187,7 +202,6 @@ output.RowData.append(data.values[:,2], "Z")
 
         i=0
 
-        simulated_cases= [0, 75, 130, 190] # List of the simulated cases available for the wind direction.
 
 
         while i < total_time: # The real time simulation mode will run until i reaches the specified time total_time. It is useful to have a long time so that the simulation never really stops.
@@ -201,7 +215,7 @@ output.RowData.append(data.values[:,2], "Z")
             if live_time-last_time >= 1 or i==total_time-dt:
                 if i< total_time-dt:
                     os.system('clear')
-                    print("Current wind direction : {0}".format(wind_direction))
+                    print("Current wind direction : {0}°, and velocity : {1} m/s".format(wind_direction, wind_value))
                     print("Current injection position : {0}".format(injection_position))
                     print("Injecting {0} particle per seconds, within a radius of {1} m and a diffusion coefficient of {2} ".format(injection_amount, injection_radius, coefficient_diffusion))
 
@@ -252,7 +266,7 @@ output.RowData.append(data.values[:,2], "Z")
             p_injection_radius=injection_radius
             p_injection_amount=injection_amount
             p_coefficient_diffusion = coefficient_diffusion
-          
+            p_wind_value=wind_value
 
 
             while True: # This loop is just used due to threading issues that can arise. Basically the code reads really fast the csv file, but when the user modifies it, it can happen that it reads a file being saved, hence creating an error. With this method, the program will retry until there is no error.
@@ -268,18 +282,25 @@ output.RowData.append(data.values[:,2], "Z")
                     coefficient_diffusion=float(injection_data.loc[current_case, 'diffCoeff'])
 
                     wind_direction=injection_data.loc[current_case,'Velocity direction']
+                    wind_value=injection_data.loc[current_case,'Velocity magnitude']
+
                 except:
                     continue # If error, try again
                 break # If not, continue
 
-            if wind_direction not in simulated_cases: # Simple condition to have the current velocity input from the UI actually snap to the closest actual velocity simulation from the simulation
-                wind_direction=simulated_cases[builtins.min(range(len(simulated_cases)), key = lambda i: abs(simulated_cases[i]-wind_direction))]
+
+            if wind_direction not in simulated_ang: # Simple condition to have the current velocity input from the UI actually snap to the closest actual velocity simulation from the simulation
+                wind_direction=simulated_ang[builtins.min(range(len(simulated_ang)), key = lambda i: abs(simulated_ang[i]-wind_direction))]
+
+            if wind_value not in simulated_vel: # Simple condition to have the current velocity input from the UI actually snap to the closest actual velocity simulation from the simulation
+                wind_value=simulated_vel[builtins.min(range(len(simulated_vel)), key = lambda i: abs(simulated_vel[i]-wind_value))]
+
 
                 #Below, if a difference is noted between what is currently simulated and what the user input, we need the simulation to go back to the time at which the user is currently to re-do the simulation. Because the simulation does not wait for the paraview time to compute (which makes more sense), it needs to come back in time to simulate the change at the right time
-            if p_wind_direction != wind_direction or p_injection_amount != injection_amount or p_injection_radius != injection_radius or p_injection_position != injection_position or p_coefficient_diffusion != coefficient_diffusion:
+            if p_wind_direction != wind_direction or p_injection_amount != injection_amount or p_injection_radius != injection_radius or p_injection_position != injection_position or p_coefficient_diffusion != coefficient_diffusion or p_wind_value != wind_value:
                 Delete(afoam)
                 i=current_time+3  # Simulate in advance. Creates a small delay in the vizualization, but is beneficial since it gives a small head-start to the backend
-                afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/{0}deg.vtm'.format(wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
+                afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/val_{0}_ang_{1}.vtm'.format(int(wind_value),int(wind_direction))]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
                 afoam.CellArrayStatus = ['U']
                 afoam.PointArrayStatus = ['U']
                 shutil.copyfile("csv{1}/particles_positions_{0}.parquet".format(i,current_case),"csv{0}/particles_positions.parquet".format(str(current_case))) # Copy the requested time as the current time

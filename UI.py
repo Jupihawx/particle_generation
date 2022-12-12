@@ -33,7 +33,8 @@ def write_values(*arg): # Used to write down the value on the csv
     df.loc[selected_tracer, 'radius_points'] = str(w5.get())
     df.loc[selected_tracer, 'diffCoeff'] = str(w6.get())
     df.loc[selected_tracer, 'Velocity direction'] = str(w7.get()) 
-   
+    df.loc[selected_tracer, 'Velocity magnitude'] = str(w8.get()) 
+
     df.loc[selected_tracer, 'total_time'] = str(sv1.get()) 
     df.loc[selected_tracer, 'dt'] = str(sv2.get()) # !!! This is wrong, should not behave like this. Modify it once you have the data for the POD. You should make sure there is another update loop and update the velocity only if it is changed (add another "Velocity changed" checker, to avoid changing it every time we modift the tracer)
 
@@ -100,6 +101,7 @@ def update_window(event): # Used to choose the right line to modify the csv
     wg.set(df.loc[selected_tracer, 'colorG'])
     wb.set(df.loc[selected_tracer, 'colorB'])
     wb.set(df.loc[selected_tracer, 'Velocity direction'])
+    wb.set(df.loc[selected_tracer, 'Velocity magnitude'])
 
 
     drop.configure(foreground="#"+str(rgb_to_hex((wr.get(),wg.get(),wb.get()))))
@@ -202,6 +204,9 @@ w6.pack()
 w7 = Scale(master, from_=0, to=360,orient=HORIZONTAL,length=300, label='Velocity direction (°)',width=30)
 #w7.set(0)
 w7.pack()
+w8 = Scale(master, from_=0, to=15,orient=HORIZONTAL,length=300, label='Velocity magnitude (m/s)',width=30)
+#w7.set(0)
+w8.pack()
 
 timeFrame= Frame(master, pady=20)
 timeFrame.pack()
