@@ -16,14 +16,13 @@ import builtins
 
 while True: # The code is running constantly, either because then pvpython does not have to boot-up again and its faster
 
-    f = open("simulation_requested.txt", "r+") # Checks when the UI requests a simulation, since the code is constantly running in a thread, this allows to launch easily
-    simulation_requested=f.read()
+    coms = pd.read_csv("front_end_back_end_communication.csv")
+    simulation_requested=coms.loc[0, 'simulation requested']# Checks when the UI requests a simulation, since the code is constantly running in a thread, this allows to launch easily
 
-    if simulation_requested==str(1): # When the UI sends a notification to this code to run.
-        f.truncate(0)
-        f.write("0") # write 0, meaning the code did read the request for simulation and will run
-        f.close()
-            
+    if simulation_requested==1: # When the UI sends a notification to this code to run.
+        coms.loc[0, 'simulation requested'] = 0 # write 0, meaning the code did read the request for simulation and will run
+        coms.to_csv("front_end_back_end_communication.csv", index=False)
+
         parser = argparse.ArgumentParser(description='Particle simulation script.') # Deprecated code, will need to be updated. This is used to chose which case is simulated. Will need to be modified so that the info is not passed through the parser, but throug the text file above.
         parser.add_argument("--id", help="Choose the id of the particle case to simulate.", type=int)
         args = parser.parse_args()
@@ -141,24 +140,39 @@ output.RowData.append(data.values[:,2], "Z")
 
             return positions
 
-
+        def clean_particles(): # Simply calculate the new position.
+            empty_particles_array=np.empty((1,3))
+            return empty_particles_array
 
 
         def update_position(position,velocity,timestep): # Simply calculate the new position.
+            position, velocity = check_stuck_particles(position,velocity)
             new_position=position+velocity*timestep
             return new_position
 
+        def check_stuck_particles(position,velocity): # Function to check if particles are stuck somewhere (V +- 0) and delete them
+            norm_velocity=np.linalg.norm(velocity,axis=1)
+            indexes_stuck=[i for i,v in enumerate(norm_velocity) if v < 1e-3]
+
+            if indexes_stuck:
+                return np.delete(position,indexes_stuck,0),np.delete(velocity,indexes_stuck,0)
+            else:
+                return position, velocity
+
+                    
+
+
+            # It seems like the condition to check if particles are stuck (Speed +- 0) also allows to target particles that are out of bound, and thus this method is deprecated
         def check_out_of_bounds(particles,limits,number_of_new_particles_per_timestep): # This is used to calculate if a particle is out of the bounds or not. It is extra computing power, but in the case particles are exiting, it helps the simulation since they are removed.
-            particles_to_check=particles[number_of_new_particles_per_timestep*5:] # Checks only the number of new particles because they are the most likely to be outside of bounds, even though its not 100% they would get removed in the next few steps anyway.
             indexes=[]
             global particles_out_of_bound
             limit_x=limits[0]
             limit_y=limits[1]
             limit_z=limits[2]
 
-            indexes_outside_x=[i for i,v in enumerate(particles[:,0]) if limit_x[0] > v or v > limit_x[1]] # if bug, replace particles_to_check with particles
-            indexes_outside_y=[i for i,v in enumerate(particles[:,1]) if limit_y[0] > v or v > limit_y[1]]
-            indexes_outside_z=[i for i,v in enumerate(particles[:,2]) if limit_z[0] > v or v > limit_z[1]]
+            indexes_outside_x=[i for i,v in enumerate(particles[:,0]) if limit_x[0] + limit_x[0]*0.05  > v or v > limit_x[1] - limit_x[1]*0.05] # changed 5% on the dimensions to make sure the particules are removed.
+            indexes_outside_y=[i for i,v in enumerate(particles[:,1]) if limit_y[0] + limit_y[0]*0.05  > v or v > limit_y[1] - limit_y[1]*0.05]
+            indexes_outside_z=[i for i,v in enumerate(particles[:,2]) if limit_z[0] + limit_z[0]*0.05  > v or v > limit_z[1] - limit_z[1]*0.05]
 
             indexes=np.concatenate((indexes_outside_x,indexes_outside_y,indexes_outside_z), axis=0)
 
@@ -208,6 +222,7 @@ output.RowData.append(data.values[:,2], "Z")
 
 
             current_time_simulated_file= open("./current_time_simulated.txt","r+") 
+            current_time_simulated_file.truncate(0)
             current_time_simulated_file.write(str(i)) # Writes at what time the current simulation is. This will then be used by paraview to know if Paraview displays too fast with respect to the simulation (if it is the case, paraview will pause for a second to let the simulation have some advance)
             current_time_simulated_file.close()
 
@@ -234,10 +249,11 @@ output.RowData.append(data.values[:,2], "Z")
 
             updated_position=update_position(position,data,dt) # Update the position
 
-            if i%dt*10==0 or particles_out_of_bound is True: # Checks every 10 time step or if a particle is detected. Helps to fasten the calculation when particles are still in the domain at the cost of a little blockage of 10 timesteps maximum at one point and once.
+            # It seems like the condition to check if particles are stuck (Speed +- 0) also allows to target particles that are out of bound, and thus this method is deprecated
+            """ if i%dt*10==0 or particles_out_of_bound is True: # Checks every 10 time step or if a particle is detected. Helps to fasten the calculation when particles are still in the domain at the cost of a little blockage of 10 timesteps maximum at one point and once.
                 updated_position, particles_out_of_bound=check_out_of_bounds(updated_position,boundaries,injection_amount)
             # If you have particle stuck at the exit, just modify check_out_of_bounds method to take into account more particles
-        
+         """
             updated_position=brownian_motion(updated_position,coefficient_diffusion,dt) # Add the brownian motion to the simulated particles
 
 
@@ -245,6 +261,8 @@ output.RowData.append(data.values[:,2], "Z")
             #new_points=generate_points(moving_injection_position(target_point,(i-current_time)*dt/(total_time-current_time)),injection_radius,injection_amount) # Generate new points. Use this line if you want the source to move, otherwise use the one above
 
             position=np.concatenate((updated_position,new_points)) # Add the new points to the existing ones
+
+
 
             df = pd.DataFrame({"1": position[:,0],
                                 "2": position[:,1],
@@ -275,6 +293,9 @@ output.RowData.append(data.values[:,2], "Z")
                     current_time=int(current_time_file.read())
                     current_time_file.close()
 
+                    coms = pd.read_csv("front_end_back_end_communication.csv") # For later use
+
+
                     injection_data = pd.read_csv("./points_data.csv") # CSV with info about the injection and time simulation
                     injection_position=[int(injection_data.loc[current_case, 'center_x']),int(injection_data.loc[current_case, 'center_y']),int(injection_data.loc[current_case, 'center_z'])]
                     injection_radius=int(injection_data.loc[current_case, 'radius_points'])
@@ -299,7 +320,7 @@ output.RowData.append(data.values[:,2], "Z")
                 #Below, if a difference is noted between what is currently simulated and what the user input, we need the simulation to go back to the time at which the user is currently to re-do the simulation. Because the simulation does not wait for the paraview time to compute (which makes more sense), it needs to come back in time to simulate the change at the right time
             if p_wind_direction != wind_direction or p_injection_amount != injection_amount or p_injection_radius != injection_radius or p_injection_position != injection_position or p_coefficient_diffusion != coefficient_diffusion or p_wind_value != wind_value:
                 Delete(afoam)
-                i=current_time+3  # Simulate in advance. Creates a small delay in the vizualization, but is beneficial since it gives a small head-start to the backend
+                i=current_time  # Simulate in advance. Creates a small delay in the vizualization, but is beneficial since it gives a small head-start to the backend
                 afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/val_{0}_ang_{1}.vtm'.format(int(wind_value),int(wind_direction))]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
                 afoam.CellArrayStatus = ['U']
                 afoam.PointArrayStatus = ['U']
@@ -312,12 +333,34 @@ output.RowData.append(data.values[:,2], "Z")
              
             i=i+1
 
+
+
+            if coms.loc[0, 'clean particles'] == 1:# Checks when the UI requests asks to delete the particles
+                print("PARTICLES CLEANED")
+                position=clean_particles()
+                i=current_time
+                df = pd.DataFrame()
+
+                pd.DataFrame(df).to_parquet('./csv{0}/particles_positions.parquet'.format(str(current_case)),index=None,compression=None) # Write the file to parquet so it can be read by paraview
+                shutil.copyfile("csv{0}/particles_positions.parquet".format(str(current_case)),"csv{1}/particles_positions_{0}.parquet".format(i,current_case)) # A bit faster than rewritting all
+
+                coms.loc[0, 'clean particles'] = 0 # write 0, meaning the code did read 
+                coms.to_csv("front_end_back_end_communication.csv", index=False)
+
+
+            while coms.loc[0, 'pause'] == 1:# Checks when the UI requests asks pause the simulation
+                try:
+                    coms = pd.read_csv("front_end_back_end_communication.csv")
+                except:
+                    continue
+                continue
+
             #Below, do all the pvpython side of thing to find the U vector for each position
             Delete(programmableSource1)
             Delete(tableToPoints1)
             Delete(resampleWithDataset1)
 
-
+            
             programmableSource1 = ProgrammableSource(registrationName='ProgrammableSource1')
             programmableSource1.OutputDataSetType = 'vtkTable'
             programmableSource1.Script = """
@@ -331,7 +374,7 @@ output.RowData.append(data.values[:,1], "Y")
 output.RowData.append(data.values[:,2], "Z")
             """.format(str(current_case))
 
-
+            
             tableToPoints1 = TableToPoints(registrationName='TableToPoints1', Input=programmableSource1)
             tableToPoints1.XColumn = 'X'
             tableToPoints1.YColumn = 'Y'
@@ -350,6 +393,7 @@ output.RowData.append(data.values[:,2], "Z")
             vtk_data = dsa.WrapDataObject(vtk_data)
 
             data = vtk_data.PointData[0]
+
 
 
 

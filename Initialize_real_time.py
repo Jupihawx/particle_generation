@@ -121,8 +121,10 @@ output.RowData.append(data_x, "X")
 output.RowData.append(data_y, "Y")
 output.RowData.append(data_z, "Z")
 
-
-
+coms = pd.read_csv("front_end_back_end_communication.csv")
+while coms.loc[0, 'pause'] == 1:
+    coms = pd.read_csv("front_end_back_end_communication.csv")
+    continue
 
 
 

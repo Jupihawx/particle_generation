@@ -90,3 +90,8 @@ if t - lastTime > 2:
   self.SetNeedsUpdate(True)
 
 
+
+
+while coms.loc[0, 'pause'] == 1:
+    coms = pd.read_csv("front_end_back_end_communication.csv")
+    continue

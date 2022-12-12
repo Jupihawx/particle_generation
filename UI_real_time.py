@@ -46,9 +46,10 @@ def write_values(*arg): # Used to write down the value on the csv
 def simulate():
     selected_tracer=int(clicked.get())    
     write_values()
-    f = open("simulation_requested.txt", "w") 
-    f.write("1")
-    f.close()
+    coms = pd.read_csv("front_end_back_end_communication.csv")
+    coms.loc[0, 'simulation requested'] = 1
+    coms.to_csv("front_end_back_end_communication.csv", index=False)
+
     os.system("/home/boris/opt/ParaView-build/paraview_build/bin/pvpython Particle_Simulation_parquet_real_time.py --id {0}".format(int(selected_tracer)))
 
 def parallel_simulate():
@@ -57,9 +58,10 @@ def parallel_simulate():
     if len(threading.enumerate())>1:
         selected_tracer=int(clicked.get())    
         write_values()
-        f = open("simulation_requested.txt", "w") 
-        f.write("1") # WILL NEED TO CHANGE THIS TO ALLOW MULTI POINTS AGAIN. EASY WRITE THE POINT IN THE SAME TEXT FILE
-        f.close()
+        coms = pd.read_csv("front_end_back_end_communication.csv")
+        coms.loc[0, 'simulation requested'] = 1
+        coms.to_csv("front_end_back_end_communication.csv", index=False)
+
     else:
         thread_simulation= threading.Thread(target=simulate)
         thread_simulation.start()
@@ -134,6 +136,22 @@ def reset():
 
 
 
+def clean_particles():
+    coms = pd.read_csv("front_end_back_end_communication.csv")
+    coms.loc[0, 'clean particles'] = 1
+    coms.to_csv("front_end_back_end_communication.csv", index=False)
+
+
+def pause():
+    coms = pd.read_csv("front_end_back_end_communication.csv")
+    if coms.loc[0, 'pause'] == 1:
+        coms.loc[0, 'pause'] = 0
+        coms.to_csv("front_end_back_end_communication.csv", index=False)
+
+    else:
+        coms.loc[0, 'pause'] =1
+        coms.to_csv("front_end_back_end_communication.csv", index=False)
+
 
 
 
@@ -202,10 +220,10 @@ w6 = Scale(master, from_=0, to=10, resolution=0.1, orient=HORIZONTAL,length=300,
 w6.set(df.loc[0, 'diffCoeff'])
 w6.pack()
 w7 = Scale(master, from_=0, to=360,orient=HORIZONTAL,length=300, label='Velocity direction (°)',width=30, command=write_values)
-#w7.set(0)
+w7.set(df.loc[0, 'Velocity direction'])
 w7.pack()
 w8 = Scale(master, from_=0, to=15,orient=HORIZONTAL,length=300, label='Velocity magnitude (m/s)',width=30, command=write_values)
-#w7.set(0)
+w8.set(df.loc[0, 'Velocity magnitude'])
 w8.pack()
 
 timeFrame= Frame(master, pady=20)
@@ -243,6 +261,10 @@ label_time.pack()
 Button(master, text='Reset', command=reset,pady=5,padx=5).pack(pady=10) # To be done
 
 Button(master, text='Simulate', command=parallel_simulate ,pady=30,padx=30).pack(pady=10) # To be done
+
+Button(master, text='Clean particles', command=clean_particles ,pady=10,padx=10).pack(pady=10) # To be done
+Button(master, text='Pause', command=pause ,pady=10,padx=10).pack(pady=10) # To be done
+
 """ 
 progress = ttk.Progressbar(master, orient = HORIZONTAL, length = 300, mode = 'determinate')
 progress.pack(pady = 10)
