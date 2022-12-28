@@ -8,6 +8,8 @@ import os
 import shutil
 import threading
 
+
+
         
 def get_current_time():
         current_time=open("./current_time.txt","r").read()
@@ -22,7 +24,6 @@ df = pd.read_csv("points_data.csv") # data controlling the points
 
 def write_values(*arg): # Used to write down the value on the csv
     df = pd.read_csv("points_data.csv")
-    coms = pd.read_csv("front_end_back_end_communication.csv")
 
     selected_tracer=int(clicked.get())
     df.loc[selected_tracer, 'center_x'] = str(w1.get())
@@ -34,8 +35,10 @@ def write_values(*arg): # Used to write down the value on the csv
     df.loc[selected_tracer, 'Velocity direction'] = str(w7.get()) 
     df.loc[selected_tracer, 'Velocity magnitude'] = str(w8.get()) 
 
-    coms.loc[0, 'max time'] = str(sv1.get()) 
-    coms.loc[0, 'fps'] = str(sv2.get()) 
+    df.loc[selected_tracer, 'total_time'] = str(sv1.get()) 
+    df.loc[selected_tracer, 'dt'] = str(sv2.get()) # !!! This is wrong, should not behave like this. Modify it once you have the data for the POD. You should make sure there is another update loop and update the velocity only if it is changed (add another "Velocity changed" checker, to avoid changing it every time we modift the tracer)
+
+    #df.loc[selected_tracer, 'updated']=str(1)
 
     df.to_csv("points_data.csv", index=False)
 
@@ -47,7 +50,7 @@ def simulate():
     coms.loc[0, 'simulation requested'] = 1
     coms.to_csv("front_end_back_end_communication.csv", index=False)
 
-    os.system("/home/boris/opt/ParaView-build/paraview_build/bin/pvpython Particle_Simulation_parquet_real_time.py --id {0}".format(int(selected_tracer)))
+    os.system("pvpython Particle_Simulation_parquet_real_time_csv.py --id {0}".format(int(selected_tracer)))
 
 def parallel_simulate():
 
