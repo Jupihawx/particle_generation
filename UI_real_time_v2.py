@@ -9,14 +9,10 @@ import shutil
 import threading
 
 df = pd.read_csv("points_data.csv") # data controlling the points
-coms = pd.read_csv("front_end_back_end_communication.csv") # data controlling the points
+coms = pd.read_csv("front_end_back_end_communication.csv") # data controlling the UI
 
 def vizualize():
     os.system("/home/boris/opt/ParaView-build/paraview_build/bin/pvpython visualisation.py")
-
-
-
-
 
 def get_current_time():
         current_time=open("./current_time_vizu.txt","r").read()
@@ -80,8 +76,6 @@ def update_window(event): # Used to choose the right line to modify the csv
     df.loc[0, 'currently_selected'] = 1
     df.to_csv("points_data.csv", index=False)
 
-    #print(df.loc[selected_tracer, 'center_x'])
-
     w1.set(df.loc[0, 'center_x'])
     w2.set(df.loc[0, 'center_y'])
     w3.set(df.loc[0, 'center_z'])
@@ -101,12 +95,7 @@ def update_window(event): # Used to choose the right line to modify the csv
 
 def reset():
 
-
     shutil.rmtree("./csv{0}/".format(0))
-    #current_time_file= open("./current_time.txt","w+")
-    #current_time_file.write(str(0))
-
-
 
 
 def clean_particles():
@@ -129,46 +118,8 @@ def pause():
 
 
 
-
-
-
-
-
-
-
-
-
 master = Tk()
 master.title("Particle Tracer Manager")
-
-
-#Button(master, text='INITIALIZE', command=lambda :select_python_shell_paraview('exec(open("./Initialize.py").read())'),pady=3,padx=30).pack()
-
-
-point_selection= ["0","1","2","3","4","5"]
-clicked = StringVar()
-clicked.set( "0" )
-drop = OptionMenu( master , clicked , *point_selection,command=update_window )
-
-
-topFrame= Frame(master)
-topFrame.pack(side=TOP)
-# Inputs to modify the values
-wr = Scale(topFrame, from_=0, to=255,orient=HORIZONTAL,length=100, label='R',width=20)
-wr.set(df.loc[0, 'colorR']) #this lines are just to initialize on the first opening 
-#wr.pack(side=LEFT)
-
-wg = Scale(topFrame, from_=0, to=255,orient=HORIZONTAL,length=100, label='G',width=20)
-wg.set(df.loc[0, 'colorG']) #this lines are just to initialize on the first opening 
-#wg.pack(side=LEFT)
-
-wb = Scale(topFrame, from_=0, to=255,orient=HORIZONTAL,length=100, label='B',width=20)
-wb.set(df.loc[0, 'colorB']) #this lines are just to initialize on the first opening 
-#wb.pack(side=LEFT)
-
-drop.configure(foreground="#"+str(rgb_to_hex((wr.get(),wg.get(),wb.get())))) #Initialize the drop color
-
-#Button(master, text='Update', command=update_colors,pady=5,padx=5).pack()
 
 
 w1 = Scale(master, from_=-2000, to=2000,orient=HORIZONTAL,length=300, label='X',width=20, command=write_values)
@@ -198,7 +149,6 @@ w8.pack()
 
 timeFrame= Frame(master, pady=20)
 timeFrame.pack()
-
 
 
 
@@ -251,13 +201,12 @@ master.attributes('-topmost', True) #To always have window on top
 
 get_current_time() # Update current time every second
 
-get_current_simulation_time() # Update current time every second
+get_current_simulation_time() # Update simulation time every second
 
 
-
-thread_visualisation= threading.Thread(target=vizualize)
+thread_visualisation= threading.Thread(target=vizualize) # Launches the vizualisation
 thread_visualisation.start()
-parallel_simulate()
+parallel_simulate() # Launches the simulation
 
 
 

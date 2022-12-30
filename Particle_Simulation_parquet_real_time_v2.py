@@ -165,10 +165,7 @@ output.RowData.append(data.values[:,2], "Z")
             else:
                 return position, velocity
 
-                    
-
-
-            # It seems like the condition to check if particles are stuck (Speed +- 0) also allows to target particles that are out of bound, and thus this method is deprecated
+            # __DEPRECATED__.It seems like the condition to check if particles are stuck (Speed +- 0) also allows to target particles that are out of bound, and thus this method is deprecated
         def check_out_of_bounds(particles,limits,number_of_new_particles_per_timestep): # This is used to calculate if a particle is out of the bounds or not. It is extra computing power, but in the case particles are exiting, it helps the simulation since they are removed.
             indexes=[]
             global particles_out_of_bound
@@ -198,6 +195,11 @@ output.RowData.append(data.values[:,2], "Z")
 
 
 
+
+
+        ##### INITIALIZE
+
+
         generate_init(injection_position,injection_radius,injection_amount,current_case,current_time) 
 
         vtk_data=sm.Fetch(resampleWithDataset1) # This is the key commmand that gets the info from paraview, but also the slowest in this script since it calls for UpdatePipeline() in the client side of paraview, which takes time and explain why the code is not fully real time.
@@ -221,10 +223,11 @@ output.RowData.append(data.values[:,2], "Z")
         p_checker_injection=checker_injection
 
 
-        while True:
+        ##### LAUNCH THE SIMULATION 
 
+        while True: 
 
-            try: # This loops checks if the total time inputed by the user changed, in case the user wants a longer simulation
+            try: # This loops checks if info inputed by the user changed, and does the modification. This only happens in the case of that the simulation is over, and that the script is waiting for another user input. If the data is modified during the simulation, it is handled below.
                 coms = pd.read_csv("front_end_back_end_communication.csv") #
                 injection_data = pd.read_csv("./points_data.csv") # CSV with info about the injection and time simulation
                 total_time=int(coms.loc[0, 'max time'])+500 # ARBITRARY, BASICALLY THE SIMULATION WILL RUN UP TO 500 STEPS AFTER THE LATEST TIME DISPLAYED (kind of a buffer)
@@ -233,12 +236,10 @@ output.RowData.append(data.values[:,2], "Z")
                 checker_injection=hash_pandas_object(injection_data)
 
 
-                if checker_com.iloc[0] != p_checker_com.iloc[0] or checker_injection.iloc[0] != p_checker_injection.iloc[0]:
+                if checker_com.iloc[0] != p_checker_com.iloc[0] or checker_injection.iloc[0] != p_checker_injection.iloc[0]: # Checks the hash of the file to see if any change was made. If so, the simulation goes back to the given time where the change has been made and relaunch the calculations
                     i=i-1 
                     if i<0:
                         i=0
-
-
                     p_checker_com=checker_com
                     p_checker_injection=checker_injection
 
@@ -247,8 +248,12 @@ output.RowData.append(data.values[:,2], "Z")
 
 
 
+
+        ##### LAUNCH THE CALCULATIONS
+         
             while i < total_time: # The real time simulation mode will run until i reaches the specified time total_time. It is useful to have a long time so that the simulation never really stops.
 
+                ### This part checks if any modification happened in the UI ###
 
                 current_time_simulated_file= open("./current_time_simulated.txt","r+") 
                 current_time_simulated_file.truncate(0)
@@ -262,7 +267,6 @@ output.RowData.append(data.values[:,2], "Z")
                 p_coefficient_diffusion = coefficient_diffusion
                 p_wind_value=wind_value
 
-
                 while True: # This loop is just used due to threading issues that can arise. Basically the code reads really fast the csv file, but when the user modifies it, it can happen that it reads a file being saved, hence creating an error. With this method, the program will retry until there is no error.
                     try:         # Read all the values
                         current_time_file=open("./current_time_vizu.txt","r") # Used to select at what time the simulation starts, as well as showing the user the current time
@@ -270,16 +274,12 @@ output.RowData.append(data.values[:,2], "Z")
                         current_time_file.close()
 
                         coms = pd.read_csv("front_end_back_end_communication.csv") # For later use
-                        
-                        
-
+                    
                         injection_data = pd.read_csv("./points_data.csv") # CSV with info about the injection and time simulation
                         injection_position=[int(injection_data.loc[current_case, 'center_x']),int(injection_data.loc[current_case, 'center_y']),int(injection_data.loc[current_case, 'center_z'])]
                         injection_radius=int(injection_data.loc[current_case, 'radius_points'])
                         injection_amount=int(injection_data.loc[current_case, 'number_points'])
                         coefficient_diffusion=float(injection_data.loc[current_case, 'diffCoeff'])
-
-
 
                         wind_direction=injection_data.loc[current_case,'Velocity direction']
                         wind_value=injection_data.loc[current_case,'Velocity magnitude']
@@ -296,7 +296,7 @@ output.RowData.append(data.values[:,2], "Z")
                     wind_value=simulated_vel[builtins.min(range(len(simulated_vel)), key = lambda i: abs(simulated_vel[i]-wind_value))]
 
 
-                    #Below, if a difference is noted between what is currently simulated and what the user input, we need the simulation to go back to the time at which the user is currently to re-do the simulation. Because the simulation does not wait for the paraview time to compute (which makes more sense), it needs to come back in time to simulate the change at the right time
+                #Below, if a difference is noted between what is currently simulated and what the user input, we need the simulation to go back to the time at which the user is currently to re-do the simulation. Because the simulation does not wait for the paraview time to compute (which makes more sense), it needs to come back in time to simulate the change at the right time
                 if p_wind_direction != wind_direction or p_injection_amount != injection_amount or p_injection_radius != injection_radius or p_injection_position != injection_position or p_coefficient_diffusion != coefficient_diffusion or p_wind_value != wind_value:
                     Delete(afoam)
                     i=current_time  # Simulate in advance. Creates a small delay in the vizualization, but is beneficial since it gives a small head-start to the backend
@@ -304,20 +304,17 @@ output.RowData.append(data.values[:,2], "Z")
                     afoam.CellArrayStatus = ['U']
                     afoam.PointArrayStatus = ['U']
                     shutil.copyfile("csv{1}/particles_positions_{0}.parquet".format(i,current_case),"csv{0}/particles_positions.parquet".format(str(current_case))) # Copy the requested time as the current time
-                
-            
+        
                     position=pd.read_parquet("csv{0}/particles_positions.parquet".format(str(current_case)))  # Now, we "came back" in time and ready to re-simulate the simulation with the new parameters, at the correct time
                     position=position.to_numpy()
 
 
 
+                ### This part creates the paraview tools to calculate the velocity at given probe points (paraview side) ###
 
+                #Below, do all the pvpython side of thing to find the U vector for each position. The filters are deleted and re-added because otherwise paraview does no seems to update the value.
+                #The method below is sub-optimal, because new proxies are being made and remove. But Paraview is stubborn and I could not find any workaround to update an existing source. Yet, this method is still faster than reading through CSV, even though the CSV reader do have a "Reload Files" method.
 
-
-##########################################################################################################################################################################
-
-
-                #Below, do all the pvpython side of thing to find the U vector for each position
                 Delete(programmableSource1)
                 Delete(tableToPoints1)
                 Delete(resampleWithDataset1)
@@ -347,17 +344,15 @@ output.RowData.append(data.values[:,2], "Z")
                     DestinationMesh=tableToPoints1)
                 resampleWithDataset1.CellLocator = 'Static Cell Locator'
                 
-                ###########
-
 
                 vtk_data=sm.Fetch(resampleWithDataset1) 
 
                 vtk_data = dsa.WrapDataObject(vtk_data)
 
-                data = vtk_data.PointData[0]
+                data = vtk_data.PointData[0] # Way of probing in paraview
 
 
-##########################################################################################################################################################################
+                ### This part creates calculates the position from the probed points above (python side) and writes it down to parquet files ###
 
 
                 updated_position=update_position(position,data,dt) # Update the position
@@ -387,11 +382,7 @@ output.RowData.append(data.values[:,2], "Z")
                 shutil.copyfile("csv{0}/particles_positions.parquet".format(str(current_case)),"csv{1}/particles_positions_{0}.parquet".format(i,current_case)) # A bit faster than rewritting all
 
 
-
-##########################################################################################################################################################################
-
-
-
+                ### This part prints for the user information ###
 
                 live_time=time.time() #Below lines used to inform the user of the current progress of the simulation in the CLI
                 if live_time-last_time >= 1 or i==total_time-dt:
@@ -408,26 +399,7 @@ output.RowData.append(data.values[:,2], "Z")
                     last_time=live_time
 
             
-                
-    
-
-
-
-
-
-
-                ####### The method below is sub-optimal, because new proxies are being made and remove. But Paraview is stubborn and I could not find any workaround to update an existing source. Yet, this method is still faster than reading through CSV, even though the CSV reader do have a "Reload Files" method.
-
-
-            
-
-
-            
-                #Used to check the csv values with the previous one
-                
-                
-
-
+                ### This part checks if the user asked to clean the particles, and does so if asked ###
 
                 if coms.loc[0, 'clean particles'] == 1:# Checks when the UI requests asks to delete the particles
                     print("PARTICLES CLEANED")
@@ -442,10 +414,9 @@ output.RowData.append(data.values[:,2], "Z")
                     coms.to_csv("front_end_back_end_communication.csv", index=False)
 
 
-
                 i=i+1
-
-                #while coms.loc[0, 'pause'] == 1:# Checks when the UI requests asks pause the simulation. DEPRECATED, JUST UNCOMMENT AND REMOVE LINE BELOW IF YOU WANT TO PAUSE UI AND SIMU AT THE SAME TIME
+                # DEPRECATED, but can be used to pause the simulation if needed.
+                #while coms.loc[0, 'pause'] == 1:# Checks when the UI requests asks pause the simulation. 
                 while False:# due to deprecated function just above
 
                     try:
@@ -453,15 +424,6 @@ output.RowData.append(data.values[:,2], "Z")
                     except:
                         continue
                     continue
-
-
-
-
-
-
-
-        #exec(open("./Particle_Simulation_parquet.py").read()) # Used to launch the code manually
-
 
 
 

@@ -1,6 +1,6 @@
 HOW TO USE:
 
-1_Launch pv_server (./pvserver --multi-clients) in multi clients mode
+1_Launch pv_server (~/opt/ParaView-build/paraview_build/bin/pvserver --multi-clients) in multi clients mode
 2_Connect your paraview GUI to the server (localhost)
 3_ Launch the "UI_real_time_v2.py" with pvpython (must be the same build than the pvsserver). Enjoy!
 

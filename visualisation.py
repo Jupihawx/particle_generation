@@ -10,8 +10,6 @@ import numpy as np
 
 def show_slice(wind_value,wind_direction):
 
-
-
     simulated_ang=["0" ,"0.3307", "0.6614" , "0.9921" ,  "1.3228" , "1.6535"  , "1.9842"  , "2.3149"  , "2.6456" ,  "2.9762" , "3.3069", "3.6376 " ,   "3.9683"  ,  "4.2990" ,   "4.6297", " 4.9604", "5.2911"  ,  "5.6218"  ,  "5.9525"] # ! Case 3.6 et 4.9 missing because problem in the sim??
     simulated_ang = [int(eval(i)*180/np.pi) for i in simulated_ang] # Convert to °
     simulated_vel=[5, 10, 15]
@@ -22,8 +20,7 @@ def show_slice(wind_value,wind_direction):
     if wind_value not in simulated_vel: # Simple condition to have the current velocity input from the UI actually snap to the closest actual velocity simulation from the simulation
         wind_value=simulated_vel[builtins.min(range(len(simulated_vel)), key = lambda i: abs(simulated_vel[i]-wind_value))]
 
-    
-    try:
+    try: # Try to modify the source for the slice
             
         afoam=FindSource('afoam')
         ReplaceReaderFileName(afoam, ['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/val_{0}_ang_{1}.vtm'.format(wind_value,wind_direction)], 'FileName')
@@ -32,7 +29,8 @@ def show_slice(wind_value,wind_direction):
         RenameProxy(afoam, 'sources', 'afoam')
         RenameSource('afoam', afoam)
 
-    except:
+    except: # If the source for the slice does not exist, create it
+
         afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/val_{0}_ang_{1}.vtm'.format(wind_value,wind_direction)]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
         slice1 = Slice(registrationName='Slice1', Input=afoam)
         slice1.SliceType = 'Plane'
@@ -85,18 +83,19 @@ def show_slice(wind_value,wind_direction):
         uTF2D = GetTransferFunction2D('U')
 
 
+Connect('localhost') # Connect to the local server launched through the terminal (see README)
 
-
-Connect('localhost')
-
-try:
+try: # Delete the displayed data if it exists already, if not, nothing happens
 
     buildingsstl = FindSource('buildings.stl')
     tableToPoints1 = FindSource('TableToPoints1')
     programmableSource1 = FindSource('ProgrammableSource1')
     slice1=FindSource('Slice1')
     afoam=FindSource('afoam')
+    cylinder2=FindSource('Cylinder2')
 
+    Delete(cylinder2)
+    del cylinder2
     Delete(buildingsstl)
     del buildingsstl
     Delete(programmableSource1)
@@ -110,20 +109,29 @@ try:
 
 
 
-
 except:
     pass
 
-current_time_file = open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_vizu.txt", "w")
+current_time_file = open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_vizu.txt", "w") # Initialize the displayed time to 0
 current_time_file.write("0")
 current_time_file.close()
 
-
 buildingsstl = STLReader(registrationName='buildings.stl', FileNames=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/constant/triSurface/buildings.stl']) # Load the STL for graphical representation
-renderView1 = GetActiveViewOrCreate('RenderView')
+renderView1 = GetActiveViewOrCreate('RenderView') # Show the buildings
 
 # show data in view
 buildingsstlDisplay = Show(buildingsstl, renderView1, 'GeometryRepresentation')
+
+cylinder2 = Cylinder(registrationName='Cylinder2') # Create the "floor"
+cylinder2.Height = 1
+cylinder2.Radius = 2000.0
+cylinder2.Center = [0.0, 0.0, -1]
+cylinder2.Resolution = 360
+cylinder2Display = Show(cylinder2, renderView1, 'GeometryRepresentation')
+cylinder2Display.Orientation = [90.0, 0.0, 0.0]
+cylinder2Display.PolarAxes.Orientation = [90.0, 0.0, 0.0]
+cylinder2Display.Opacity = 0.1
+
 
 # get color transfer function/color map for 'STLSolidLabeling'
 sTLSolidLabelingLUT = GetColorTransferFunction('STLSolidLabeling')
@@ -182,9 +190,9 @@ programmableSource1.Script = ''
 programmableSource1.ScriptRequestInformation = ''
 programmableSource1.PythonPath = ''
 
-# Properties modified on programmableSource1
+# This scripts reads the data from parquet and displays it, all the while it writes if rendering is done to the text file
 programmableSource1.OutputDataSetType = 'vtkTable'
-programmableSource1.Script = """import numpy as np 
+programmableSource1.Script = """import numpy as np  
 import pandas as pd
 import time
 # assuming data.csv is a CSV file with the 1st row being the names names for
@@ -272,9 +280,6 @@ renderView1.Update()
 
 
 
-
-
-
 i=0
 p_wind_direction=0
 p_wind_value=0
@@ -286,10 +291,10 @@ while 1:
     except:
         continue
 
-    if i>=coms.loc[0, 'max time']:
+    if i>=coms.loc[0, 'max time']: # Loops back if the user inputed a max time that has been reached
         i=0
 
-    if coms.loc[0, 'pause']==0:
+    if coms.loc[0, 'pause']==0: # Handle the pause, only continue if the user did not pause
         i=i+1
         programmableSource1.Script = """import numpy as np 
 import pandas as pd
@@ -325,7 +330,7 @@ output.RowData.append(data_z, "Z")
 
 f.truncate(0)
 f.write("1")
-""".format(i)
+""".format(i) # Update the filter to the new value of i
 
         wait_rendering_file = open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/rendering_done.txt","r") 
 
@@ -333,14 +338,18 @@ f.write("1")
             continue
 
         try:
-            time.sleep(1/coms.loc[0, 'fps'])
+            time.sleep(1/coms.loc[0, 'fps']) # Handles the FPS inputed by the user
         except:
             time.sleep(1) # When the user delete the fps totally, the code would crash, instead, make it so fps=1
 
-        current_time_simulated_file= open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_simulated.txt","r")
-        simulation_time=int(current_time_simulated_file.read())
+        try:
+            current_time_simulated_file= open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_simulated.txt","r")
+            simulation_time=int(current_time_simulated_file.read())
+        except:
+            pass
 
-        while i > simulation_time-10:
+
+        while i > simulation_time-10: # Wait if the displaying is catching up to the simulation (with a 10 frame buffer to avoid any issues)
             time.sleep(0.5) # Display going too fast
             try:
                 current_time_simulated_file= open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_simulated.txt","r")
@@ -348,12 +357,12 @@ f.write("1")
             except:
                 pass
 
-        current_time_file = open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_vizu.txt", "w")
+        current_time_file = open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_vizu.txt", "w") # Write at what time we are currently vizualizing
         current_time_file.write(str(i))
         current_time_file.close()
 
 
-        try:
+        try: # Handle the display or not of the slice
             injection_data = pd.read_csv("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/points_data.csv") # CSV with info about the injection and time simulation
             wind_direction=injection_data.loc[0,'Velocity direction']
             wind_value=injection_data.loc[0,'Velocity magnitude']
