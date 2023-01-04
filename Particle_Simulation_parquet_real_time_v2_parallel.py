@@ -13,9 +13,12 @@ import shutil
 import time
 import builtins
 from pandas.util import hash_pandas_object
+from mpi4py import MPI
+import mpi4py
 
 while True: # The code is running constantly, either because then pvpython does not have to boot-up again and its faster
 
+    print(MPI.COMM_WORLD.Get_rank())
 
     try:
         coms = pd.read_csv("front_end_back_end_communication.csv")
@@ -113,6 +116,7 @@ while True: # The code is running constantly, either because then pvpython does 
         if current_time==0: #Only generate the starting position if the user generates new particles at time 0.
             generate_init(injection_position,injection_radius,injection_amount,current_case,current_time)
 
+        current_rank=MPI.COMM_WORLD.Get_rank()
         programmableSource1 = ProgrammableSource(registrationName='ProgrammableSource1') # This source represents the "reader" of the parquet files. Themselves being the positions of the particles at a given time
         programmableSource1.OutputDataSetType = 'vtkTable'
         programmableSource1.Script = """
@@ -121,10 +125,10 @@ import pandas as pd
 
 data = pd.read_parquet("./csv{0}/particles_positions.parquet")
 
-output.RowData.append(data.values[:,0], "X")
-output.RowData.append(data.values[:,1], "Y")
-output.RowData.append(data.values[:,2], "Z")
-        """.format(str(current_case))
+output.RowData.append(data.values[:len(data)*(int({1})+1)//4,0], "X")
+output.RowData.append(data.values[:len(data)*(int({1})+1)//4,1], "Y")
+output.RowData.append(data.values[:len(data)*(int({1})+1)//4,2], "Z")
+        """.format(str(current_case),str(current_rank))
 
 
         # create a new 'Table To Points'
@@ -319,7 +323,7 @@ output.RowData.append(data.values[:,2], "Z")
                 Delete(tableToPoints1)
                 Delete(resampleWithDataset1)
 
-                
+                current_rank=MPI.COMM_WORLD.Get_rank()   
                 programmableSource1 = ProgrammableSource(registrationName='ProgrammableSource1')
                 programmableSource1.OutputDataSetType = 'vtkTable'
                 programmableSource1.Script = """
@@ -328,12 +332,13 @@ output.RowData.append(data.values[:,2], "Z")
 
     data = pd.read_parquet("./csv{0}/particles_positions.parquet")
 
-    output.RowData.append(data.values[:,0], "X")
-    output.RowData.append(data.values[:,1], "Y")
-    output.RowData.append(data.values[:,2], "Z")
-                """.format(str(current_case))
+    print({1})
+    output.RowData.append(data.values[:len(data)*(int({1})+1)//4,0], "X")
+    output.RowData.append(data.values[:len(data)*(int({1})+1)//4,1], "Y")
+    output.RowData.append(data.values[:len(data)*(int({1})+1)//4,2], "Z")
+                """.format(str(current_case),str(current_rank))
 
-                
+                print(mpi4py.get_config())      
                 tableToPoints1 = TableToPoints(registrationName='TableToPoints1', Input=programmableSource1)
                 tableToPoints1.XColumn = 'X'
                 tableToPoints1.YColumn = 'Y'
@@ -354,8 +359,8 @@ output.RowData.append(data.values[:,2], "Z")
 
                 ### This part creates calculates the position from the probed points above (python side) and writes it down to parquet files ###
 
-
                 updated_position=update_position(position,data,dt) # Update the position
+                #mpirun -np 4 ~/opt/ParaView-build/paraview_build/bin/pvbatch Particle_Simulation_parquet_real_time_v2.py
 
                 # It seems like the condition to check if particles are stuck (Speed +- 0) also allows to target particles that are out of bound, and thus this method is deprecated
                 """ if i%dt*10==0 or particles_out_of_bound is True: # Checks every 10 time step or if a particle is detected. Helps to fasten the calculation when particles are still in the domain at the cost of a little blockage of 10 timesteps maximum at one point and once.
@@ -407,12 +412,10 @@ output.RowData.append(data.values[:,2], "Z")
                     i=current_time
                     df = pd.DataFrame()
 
-
                     treated_data = pd.DataFrame({"1": position[:,0], # Necessary step when using parquet
-                        "2": position[:,1],
-                        "3": position[:,2]})
-
-
+                                            "2": position[:,1],
+                                            "3": position[:,2]})
+                                            
                     pd.DataFrame(treated_data).to_parquet('./csv{0}/particles_positions.parquet'.format(str(current_case)),index=None,compression=None) # Write the file to parquet so it can be read by paraview
                     shutil.copyfile("csv{0}/particles_positions.parquet".format(str(current_case)),"csv{1}/particles_positions_{0}.parquet".format(i,current_case)) # A bit faster than rewritting all
 
@@ -430,7 +433,6 @@ output.RowData.append(data.values[:,2], "Z")
                     except:
                         continue
                     continue
-
 
 
 

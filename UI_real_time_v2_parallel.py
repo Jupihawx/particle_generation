@@ -7,12 +7,43 @@ from tkinter import *
 import os
 import shutil
 import threading
+import numpy as np
 
 df = pd.read_csv("points_data.csv") # data controlling the points
 coms = pd.read_csv("front_end_back_end_communication.csv") # data controlling the UI
 
 def vizualize():
     os.system("/home/boris/opt/ParaView-build/paraview_build/bin/pvpython visualisation.py")
+
+
+def file_initialization(): # Extra function to initialize import files. It is quite important now that everything happens in parallel, so that the vizualisation does not try to read file that are not there yet
+    current_time_simulated_file= open("./current_time_simulated.txt","r+") # Initialize the simulated time to 0
+    current_time_simulated_file.truncate(0)
+    current_time_simulated_file.write(str(0)) 
+    current_time_simulated_file.close()
+
+
+    current_time_file = open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_vizu.txt", "w") # Initialize the displayed time to 0
+    current_time_file.write("0")
+    current_time_file.close()
+
+
+    try:
+        shutil.rmtree('./csv0') # Remove current solution to free up space and avoid any interference between runs
+    except:
+        pass
+    os.makedirs('./csv0')
+
+
+    data=np.ones((10,3))
+    treated_data = pd.DataFrame({"1": data[:,0], # Necessary step when using parquet
+                            "2": data[:,1],
+                            "3": data[:,2]})
+                        
+    treated_data.to_parquet('./csv0/particles_positions_0.parquet',index=None,compression=None) # Create a fake file so that the vizu process can start and then wait for the real point to be available.
+
+
+
 
 def get_current_time():
         current_time=open("./current_time_vizu.txt","r").read()
@@ -25,6 +56,7 @@ def get_current_simulation_time():
         master.after(1000,get_current_simulation_time)
 
 def write_values(*arg): # Used to write down the value on the csv
+    
     df = pd.read_csv("points_data.csv")
     coms = pd.read_csv("front_end_back_end_communication.csv")
 
@@ -65,6 +97,10 @@ def parallel_simulate():
         print("LAUNCHING SIMULATION") """
 
 
+def threading_simulation():
+    os.system("python3 thread_management.py")
+
+
 
 def rgb_to_hex(rgb):
     return '%02x%02x%02x' % rgb
@@ -102,6 +138,10 @@ def reset():
 def clean_particles():
     coms = pd.read_csv("front_end_back_end_communication.csv")
     coms.loc[0, 'clean particles'] = 1
+    coms.to_csv("front_end_back_end_communication.csv", index=False)
+
+    time.sleep(1)
+    coms.loc[0, 'clean particles'] = 0 
     coms.to_csv("front_end_back_end_communication.csv", index=False)
 
 
@@ -204,14 +244,15 @@ get_current_time() # Update current time every second
 
 get_current_simulation_time() # Update simulation time every second
 
+file_initialization()
+
 
 thread_visualisation= threading.Thread(target=vizualize) # Launches the vizualisation
 thread_visualisation.start()
-parallel_simulate() # Launches the simulation
+#parallel_simulate() # Launches the simulation
 
 
-
-
-
+thread_simulation= threading.Thread(target=threading_simulation) # Launches the simulation
+thread_simulation.start()
 
 mainloop()

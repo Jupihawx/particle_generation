@@ -3,6 +3,8 @@ HOW TO USE:
 1_Launch pv_server (~/opt/ParaView-build/paraview_build/bin/pvserver --multi-clients) in multi clients mode
 2_Connect your paraview GUI to the server (localhost)
 3_ Launch the "UI_real_time_v2.py" with pvpython (must be the same build than the pvsserver). Enjoy!
+    If you want faster calculcation, but not as fast reaction to parameters change, use UI_real_time_v2_thread.py
+    To modify the number of thread, simply modify the value in "thread_management.py"
 
 
 
@@ -48,7 +50,7 @@ exec(open(vEnv).read(), {'__file__': vEnv})
 current_data=pd.read_parquet("./csv/particles_positions")
 
 
-vEnv='/home/boris/environments/venv/bin/activate'
+vEnv='~/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/.venv/bin'
 exec(open(vEnv).read(), {'__file__': vEnv})
 
 
@@ -98,3 +100,12 @@ Create an environment variable : PV_VENV="Path/to/venv"
 
 #vEnv='C:/Users/Boris/Desktop/Particles_simulation/virtualenv39/Scripts/activate_this.py'
 #exec(open(vEnv).read(), {'__file__': vEnv})
+
+
+
+https://linuxize.com/post/how-to-install-python-3-9-on-ubuntu-20-04/
+
+https://stackoverflow.com/questions/24123150/pyvenv-3-4-returned-non-zero-exit-status-1
+
+https://kitware.github.io/trame/docs/tutorial-paraview.html
+

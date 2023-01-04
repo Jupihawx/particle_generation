@@ -13,21 +13,27 @@ import shutil
 import time
 import builtins
 from pandas.util import hash_pandas_object
+import argparse
+
+parser = argparse.ArgumentParser() # Takes two argument, the number of threads and the id of the thread being launched
+parser.add_argument('--thread_number', nargs=1)
+parser.add_argument('--thread_id', nargs=1)
+
+args = parser.parse_args()
+
+thread_number=int(args.thread_number[0])
+thread_id=int(args.thread_id[0])
+
+print("ID: {0}, Number of threads: {1}".format(str(thread_id),str(thread_number)))
 
 while True: # The code is running constantly, either because then pvpython does not have to boot-up again and its faster
 
-
     try:
         coms = pd.read_csv("front_end_back_end_communication.csv")
-        shutil.rmtree('./csv0') # Remove current solution to free up space and avoid any interference between runs
     except:
         pass
 
-    simulation_requested=coms.loc[0, 'simulation requested']# Checks when the UI requests a simulation, since the code is constantly running in a thread, this allows to launch easily
-
-    if simulation_requested==1: # When the UI sends a notification to this code to run.
-        coms.loc[0, 'simulation requested'] = 0 # write 0, meaning the code did read the request for simulation and will run
-        coms.to_csv("front_end_back_end_communication.csv", index=False)
+    if True:
 
         current_case=0
 
@@ -46,7 +52,7 @@ while True: # The code is running constantly, either because then pvpython does 
         injection_data = pd.read_csv("./points_data.csv") # CSV with info about the injection and time simulation
         injection_position=[int(injection_data.loc[current_case, 'center_x']),int(injection_data.loc[current_case, 'center_y']),int(injection_data.loc[current_case, 'center_z'])]
         injection_radius=int(injection_data.loc[current_case, 'radius_points'])
-        injection_amount=int(injection_data.loc[current_case, 'number_points'])
+        injection_amount=int(int(injection_data.loc[current_case, 'number_points'])/thread_number)
         coefficient_diffusion=float(injection_data.loc[current_case, 'diffCoeff'])
 
         total_time=int(coms.loc[0, 'max time'])+500 # ARBITRARY, BASICALLY THE SIMULATION WILL RUN UP TO 500 STEPS AFTER THE LATEST TIME DISPLAYED (kind of a buffer)
@@ -91,10 +97,6 @@ while True: # The code is running constantly, either because then pvpython does 
 
         def generate_init(center,radius,number_of_particles,current_case,current_time): # Used to generate the intial files
 
-            path="./csv{0}".format(str(current_case))
-            isExist= os.path.exists(path)
-            if not isExist:
-                os.makedirs(path)
 
             place_holder=np.ones((number_of_particles,3))
 
@@ -104,9 +106,9 @@ while True: # The code is running constantly, either because then pvpython does 
                                 "2": positions[:,1],
                                 "3": positions[:,2]})
 
-            pd.DataFrame(df_i).to_parquet('./csv{0}/particles_positions.parquet'.format(str(current_case)),index=None,compression=None) # Using parquet since it is way faster to write/read. Only issue is the need to compile your own version of paraview so the library pyarrow is included (venv)
-            pd.DataFrame(df_i).to_parquet('./csv{0}/particles_positions_0.parquet'.format(str(current_case)),index=None,compression=None) # Using parquet since it is way faster to write/read. Only issue is the need to compile your own version of paraview so the library pyarrow is included (venv)
-            pd.DataFrame(df_i).to_parquet('./csv{0}/particles_positions_{1}.parquet'.format(str(current_case),str(current_time)),index=None,compression=None)
+            pd.DataFrame(df_i).to_parquet('./csv{0}/particles_positions_t{1}.parquet'.format(str(current_case),str(thread_id)),index=None,compression=None) # Using parquet since it is way faster to write/read. Only issue is the need to compile your own version of paraview so the library pyarrow is included (venv)
+            pd.DataFrame(df_i).to_parquet('./csv{0}/particles_positions_0_t{1}.parquet'.format(str(current_case),str(thread_id)),index=None,compression=None) # Using parquet since it is way faster to write/read. Only issue is the need to compile your own version of paraview so the library pyarrow is included (venv)
+            pd.DataFrame(df_i).to_parquet('./csv{0}/particles_positions_{1}_t{2}.parquet'.format(str(current_case),str(current_time),str(thread_id)),index=None,compression=None)
 
 
 
@@ -119,12 +121,12 @@ while True: # The code is running constantly, either because then pvpython does 
 import numpy as np
 import pandas as pd
 
-data = pd.read_parquet("./csv{0}/particles_positions.parquet")
+data = pd.read_parquet("./csv{0}/particles_positions_t{1}.parquet")
 
 output.RowData.append(data.values[:,0], "X")
 output.RowData.append(data.values[:,1], "Y")
 output.RowData.append(data.values[:,2], "Z")
-        """.format(str(current_case))
+        """.format(str(current_case),str(thread_id))
 
 
         # create a new 'Table To Points'
@@ -213,8 +215,6 @@ output.RowData.append(data.values[:,2], "Z")
 
         #target_point=[30,-300,300] # Modify this point if you want your injection to move linearly to this point
 
-        for i in range(0,total_time,dt): # Create "fake" files that are mostly empty, not necessary but nice to have so that even if somehow paraview displays a case not yet generated, there will be no error message
-            shutil.copyfile("csv{0}/particles_positions.parquet".format(str(current_case)),"csv{1}/particles_positions_{0}.parquet".format(i,current_case)) 
 
         i=0
         checker_com=hash_pandas_object(coms)
@@ -253,12 +253,10 @@ output.RowData.append(data.values[:,2], "Z")
          
             while i < total_time: # The real time simulation mode will run until i reaches the specified time total_time. It is useful to have a long time so that the simulation never really stops.
 
+
                 ### This part checks if any modification happened in the UI ###
 
-                current_time_simulated_file= open("./current_time_simulated.txt","r+") 
-                current_time_simulated_file.truncate(0)
-                current_time_simulated_file.write(str(i)) # Writes at what time the current simulation is. This will then be used by paraview to know if Paraview displays too fast with respect to the simulation (if it is the case, paraview will pause for a second to let the simulation have some advance)
-                current_time_simulated_file.close()
+
 
                 p_wind_direction=wind_direction
                 p_injection_position=injection_position
@@ -278,7 +276,7 @@ output.RowData.append(data.values[:,2], "Z")
                         injection_data = pd.read_csv("./points_data.csv") # CSV with info about the injection and time simulation
                         injection_position=[int(injection_data.loc[current_case, 'center_x']),int(injection_data.loc[current_case, 'center_y']),int(injection_data.loc[current_case, 'center_z'])]
                         injection_radius=int(injection_data.loc[current_case, 'radius_points'])
-                        injection_amount=int(injection_data.loc[current_case, 'number_points'])
+                        injection_amount=int(int(injection_data.loc[current_case, 'number_points'])/thread_number)
                         coefficient_diffusion=float(injection_data.loc[current_case, 'diffCoeff'])
 
                         wind_direction=injection_data.loc[current_case,'Velocity direction']
@@ -299,14 +297,20 @@ output.RowData.append(data.values[:,2], "Z")
                 #Below, if a difference is noted between what is currently simulated and what the user input, we need the simulation to go back to the time at which the user is currently to re-do the simulation. Because the simulation does not wait for the paraview time to compute (which makes more sense), it needs to come back in time to simulate the change at the right time
                 if p_wind_direction != wind_direction or p_injection_amount != injection_amount or p_injection_radius != injection_radius or p_injection_position != injection_position or p_coefficient_diffusion != coefficient_diffusion or p_wind_value != wind_value:
                     Delete(afoam)
+                    previous_i=i
                     i=current_time  # Simulate in advance. Creates a small delay in the vizualization, but is beneficial since it gives a small head-start to the backend
                     afoam = XMLMultiBlockDataReader(registrationName='afoam', FileName=['/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/cases/val_{0}_ang_{1}.vtm'.format(int(wind_value),int(wind_direction))]) # Depending on the slider position, the simulator with select a vtm file representing the field at that given angle
                     afoam.CellArrayStatus = ['U']
                     afoam.PointArrayStatus = ['U']
-                    shutil.copyfile("csv{1}/particles_positions_{0}.parquet".format(i,current_case),"csv{0}/particles_positions.parquet".format(str(current_case))) # Copy the requested time as the current time
+                    shutil.copyfile("csv{1}/particles_positions_{0}_t{2}.parquet".format(i,current_case,str(thread_id)),"csv{0}/particles_positions_t{1}.parquet".format(str(current_case),str(thread_id))) # Copy the requested time as the current time
         
-                    position=pd.read_parquet("csv{0}/particles_positions.parquet".format(str(current_case)))  # Now, we "came back" in time and ready to re-simulate the simulation with the new parameters, at the correct time
+                    position=pd.read_parquet("csv{0}/particles_positions_t{1}.parquet".format(str(current_case),str(thread_id)))  # Now, we "came back" in time and ready to re-simulate the simulation with the new parameters, at the correct time
                     position=position.to_numpy()
+
+
+                    for j in range(current_time+2,previous_i): # Remove all the files not going to be used, so that the thread manager do not convert files not going to be used
+                        os.remove("csv0/particles_positions_{1}_t{0}.parquet".format(str(thread_id),str(j)))
+
 
 
 
@@ -326,12 +330,12 @@ output.RowData.append(data.values[:,2], "Z")
     import numpy as np
     import pandas as pd
 
-    data = pd.read_parquet("./csv{0}/particles_positions.parquet")
+    data = pd.read_parquet("./csv{0}/particles_positions_t{1}.parquet")
 
     output.RowData.append(data.values[:,0], "X")
     output.RowData.append(data.values[:,1], "Y")
     output.RowData.append(data.values[:,2], "Z")
-                """.format(str(current_case))
+                """.format(str(current_case),str(thread_id))
 
                 
                 tableToPoints1 = TableToPoints(registrationName='TableToPoints1', Input=programmableSource1)
@@ -376,10 +380,10 @@ output.RowData.append(data.values[:,2], "Z")
                                     "2": position[:,1],
                                     "3": position[:,2]})
 
-                pd.DataFrame(df).to_parquet('./csv{0}/particles_positions.parquet'.format(str(current_case)),index=None,compression=None) # Write the file to parquet so it can be read by paraview
+                pd.DataFrame(df).to_parquet('./csv{0}/particles_positions_t{1}.parquet'.format(str(current_case),str(thread_id)),index=None,compression=None) # Write the file to parquet so it can be read by paraview
 
 
-                shutil.copyfile("csv{0}/particles_positions.parquet".format(str(current_case)),"csv{1}/particles_positions_{0}.parquet".format(i,current_case)) # A bit faster than rewritting all
+                shutil.copyfile("csv{0}/particles_positions_t{1}.parquet".format(str(current_case),str(thread_id)),"csv{1}/particles_positions_{0}_t{2}.parquet".format(i,current_case,str(thread_id))) # A bit faster than rewritting all
 
 
                 ### This part prints for the user information ###
@@ -388,6 +392,7 @@ output.RowData.append(data.values[:,2], "Z")
                 if live_time-last_time >= 1 or i==total_time-dt:
                     if i< total_time-dt:
                         os.system('clear')
+                        print("Displaying thread number {0} of {1}".format(str(thread_id),str(thread_number)))
                         print("Current wind direction : {0}°, and velocity : {1} m/s".format(wind_direction, wind_value))
                         print("Current injection position : {0}".format(injection_position))
                         print("Injecting {0} particle per seconds, within a radius of {1} m and a diffusion coefficient of {2} ".format(injection_amount, injection_radius, coefficient_diffusion))
@@ -402,34 +407,25 @@ output.RowData.append(data.values[:,2], "Z")
                 ### This part checks if the user asked to clean the particles, and does so if asked ###
 
                 if coms.loc[0, 'clean particles'] == 1:# Checks when the UI requests asks to delete the particles
-                    print("PARTICLES CLEANED")
                     position=clean_particles()
+                    previous_i=i
                     i=current_time
                     df = pd.DataFrame()
 
-
                     treated_data = pd.DataFrame({"1": position[:,0], # Necessary step when using parquet
-                        "2": position[:,1],
-                        "3": position[:,2]})
+                                            "2": position[:,1],
+                                            "3": position[:,2]})
+                                        
 
+                    pd.DataFrame(treated_data).to_parquet('./csv{0}/particles_positions_t{1}.parquet'.format(str(current_case),str(thread_id)),index=None,compression=None) # Write the file to parquet so it can be read by paraview
+                    shutil.copyfile("csv{0}/particles_positions_t{1}.parquet".format(str(current_case),str(thread_id)),"csv{1}/particles_positions_{0}_t{2}.parquet".format(i,current_case,str(thread_id))) # A bit faster than rewritting all
 
-                    pd.DataFrame(treated_data).to_parquet('./csv{0}/particles_positions.parquet'.format(str(current_case)),index=None,compression=None) # Write the file to parquet so it can be read by paraview
-                    shutil.copyfile("csv{0}/particles_positions.parquet".format(str(current_case)),"csv{1}/particles_positions_{0}.parquet".format(i,current_case)) # A bit faster than rewritting all
-
-                    coms.loc[0, 'clean particles'] = 0 # write 0, meaning the code did read 
-                    coms.to_csv("front_end_back_end_communication.csv", index=False)
+                    for j in range(current_time+2,previous_i): # Same, remove data that will not be used to avoid any issue
+                        os.remove("csv0/particles_positions_{1}_t{0}.parquet".format(str(thread_id),str(j)))
 
 
                 i=i+1
-                # DEPRECATED, but can be used to pause the simulation if needed.
-                #while coms.loc[0, 'pause'] == 1:# Checks when the UI requests asks pause the simulation. 
-                while False:# due to deprecated function just above
 
-                    try:
-                        coms = pd.read_csv("front_end_back_end_communication.csv")
-                    except:
-                        continue
-                    continue
 
 
 

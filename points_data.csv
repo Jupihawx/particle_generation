@@ -1,5 +1,5 @@
 center_x,center_y,center_z,number_points,radius_points,diffCoeff,Velocity direction,colorR,colorG,colorB,total_time,dt,currently_selected,Velocity magnitude
-75,657,74,300,3,0.5,17,255,255,255,10000.0,1.0,1,15
+-104,-149,97,300,3,0.6,58,255,255,255,10000.0,1.0,1,15
 30,-373,10,0,1,1.0,0,0,255,0,500.0,1.0,0,5
 30,-300,300,0,3,1.0,0,255,255,255,500.0,1.0,0,5
 30,-299,300,0,1,1.0,0,255,255,255,500.0,1.0,0,5

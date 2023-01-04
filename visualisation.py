@@ -346,7 +346,8 @@ f.write("1")
             current_time_simulated_file= open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_simulated.txt","r")
             simulation_time=int(current_time_simulated_file.read())
         except:
-            pass
+            simulation_time=0
+            
 
 
         while i > simulation_time-10: # Wait if the displaying is catching up to the simulation (with a 10 frame buffer to avoid any issues)
@@ -355,7 +356,7 @@ f.write("1")
                 current_time_simulated_file= open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_simulated.txt","r")
                 simulation_time=int(current_time_simulated_file.read())
             except:
-                pass
+                simulation_time=0
 
         current_time_file = open("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/current_time_vizu.txt", "w") # Write at what time we are currently vizualizing
         current_time_file.write(str(i))
