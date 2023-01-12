@@ -12,7 +12,7 @@ df = pd.read_csv("points_data.csv") # data controlling the points
 coms = pd.read_csv("front_end_back_end_communication.csv") # data controlling the UI
 
 def vizualize():
-    os.system("/home/boris/opt/ParaView-build/paraview_build/bin/pvpython visualisation.py")
+    os.system("/home/boris/opt/ParaView-build/paraview_build/bin/pvpython visualisation_POD.py")
 
 def get_current_time():
         current_time=open("./current_time_vizu.txt","r").read()
@@ -51,7 +51,7 @@ def simulate():
     coms.loc[0, 'simulation requested'] = 1
     coms.to_csv("front_end_back_end_communication.csv", index=False)
 
-    os.system("/home/boris/opt/ParaView-build/paraview_build/bin/pvpython Particle_Simulation_parquet_real_time_v2.py")
+    os.system("/home/boris/opt/ParaView-build/paraview_build/bin/pvpython Particle_Simulation_parquet_real_time_v2_POD.py")
     #os.system("~/opt/ParaView-5.11/bin/mpiexec -np 4 ~/opt/ParaView-build/paraview_build/bin/pvbatch Particle_Simulation_parquet_real_time_v2_parallel.py")
 
 def parallel_simulate():

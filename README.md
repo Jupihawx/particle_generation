@@ -6,6 +6,8 @@ HOW TO USE:
     If you want faster calculcation, but not as fast reaction to parameters change, use UI_real_time_v2_thread.py
     To modify the number of thread, simply modify the value in "thread_management.py"
 
+INFO: https://app.diagrams.net/#Wb!p_WAy7iReU-9eh1uFLrlMFJc0-LRyTlEtCjbAv2abk5d3JFj300CSamtipc5ZjK-%2F01BAIQXGV5MVRPMC6J7ZB2EGJPVOPCGPFH
+
 
 
 This needs to use a built version of paraview. To do so, follow the tutorial there: https://www.paraview.org/Wiki/ParaView:Build_And_Install
