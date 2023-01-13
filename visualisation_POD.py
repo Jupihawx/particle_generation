@@ -120,9 +120,9 @@ HideScalarBarIfNotNeeded(sTLSolidLabelingLUT, renderView1)
 
 
 # Loads a heavy VTU holding all the bases 19, that then will be used to simulate the different wind. Technically, we could use less basis at the cost of the precision of the result
-basesAndMean_total_19basesvtu = XMLUnstructuredGridReader(registrationName='BasesAndMean_total_19bases.vtu', FileName=['/home/boris/OpenFOAM/boris-v2206/run/ROM/Own_code/BasesAndMean_total_19bases.vtu'])
+basesAndMean_total_19basesvtu = XMLUnstructuredGridReader(registrationName='BasesAndMean_total_19bases.vtu', FileName=['/home/boris/OpenFOAM/boris-v2206/run/ROM/Own_code/BasesAndMean_total_25bases_Total.vtu'])
 basesAndMean_total_19basesvtu.CellArrayStatus = ['U']
-basesAndMean_total_19basesvtu.PointArrayStatus = ['Mean', 'Base0', 'Base1', 'Base2', 'Base3', 'Base4', 'Base5', 'Base6', 'Base7', 'Base8', 'Base9', 'Base10', 'Base11', 'Base12', 'Base13', 'Base14', 'Base15', 'Base16', 'Base17', 'Base18']
+basesAndMean_total_19basesvtu.PointArrayStatus = ['Mean_total', 'Base0_total', 'Base1_total', 'Base2_total', 'Base3_total', 'Base4_total', 'Base5_total', 'Base6_total', 'Base7_total', 'Base8_total', 'Base9_total', 'Base10_total', 'Base11_total', 'Base12_total', 'Base13_total', 'Base14_total', 'Base15_total', 'Base16_total', 'Base17_total', 'Base18_total', 'Base19_total', 'Base20_total', 'Base21_total', 'Base22_total', 'Base23_total', 'Base24_total', 'Base25_total']
 
 # Properties modified on basesAndMean_total_19basesvtu
 basesAndMean_total_19basesvtu.CellArrayStatus = []
@@ -137,23 +137,23 @@ basesAndMean_total_19basesvtuDisplay.ColorArrayName = [None, '']
 basesAndMean_total_19basesvtuDisplay.SelectTCoordArray = 'None'
 basesAndMean_total_19basesvtuDisplay.SelectNormalArray = 'None'
 basesAndMean_total_19basesvtuDisplay.SelectTangentArray = 'None'
-basesAndMean_total_19basesvtuDisplay.OSPRayScaleArray = 'Base0'
+basesAndMean_total_19basesvtuDisplay.OSPRayScaleArray = 'Base0_total'
 basesAndMean_total_19basesvtuDisplay.OSPRayScaleFunction = 'PiecewiseFunction'
-basesAndMean_total_19basesvtuDisplay.SelectOrientationVectors = 'Base0'
+basesAndMean_total_19basesvtuDisplay.SelectOrientationVectors = 'Base0_total'
 basesAndMean_total_19basesvtuDisplay.ScaleFactor = 400.0
-basesAndMean_total_19basesvtuDisplay.SelectScaleArray = 'Base0'
+basesAndMean_total_19basesvtuDisplay.SelectScaleArray = 'Base0_total'
 basesAndMean_total_19basesvtuDisplay.GlyphType = 'Arrow'
-basesAndMean_total_19basesvtuDisplay.GlyphTableIndexArray = 'Base0'
+basesAndMean_total_19basesvtuDisplay.GlyphTableIndexArray = 'Base0_total'
 basesAndMean_total_19basesvtuDisplay.GaussianRadius = 20.0
-basesAndMean_total_19basesvtuDisplay.SetScaleArray = ['POINTS', 'Base0']
+basesAndMean_total_19basesvtuDisplay.SetScaleArray = ['POINTS', 'Base0_total']
 basesAndMean_total_19basesvtuDisplay.ScaleTransferFunction = 'PiecewiseFunction'
-basesAndMean_total_19basesvtuDisplay.OpacityArray = ['POINTS', 'Base0']
+basesAndMean_total_19basesvtuDisplay.OpacityArray = ['POINTS', 'Base0_total']
 basesAndMean_total_19basesvtuDisplay.OpacityTransferFunction = 'PiecewiseFunction'
 basesAndMean_total_19basesvtuDisplay.DataAxesGrid = 'GridAxesRepresentation'
 basesAndMean_total_19basesvtuDisplay.PolarAxes = 'PolarAxesRepresentation'
 basesAndMean_total_19basesvtuDisplay.ScalarOpacityUnitDistance = 27.775292883875284
-basesAndMean_total_19basesvtuDisplay.OpacityArrayName = ['POINTS', 'Base0']
-basesAndMean_total_19basesvtuDisplay.SelectInputVectors = ['POINTS', 'Base0']
+basesAndMean_total_19basesvtuDisplay.OpacityArrayName = ['POINTS', 'Base0_total']
+basesAndMean_total_19basesvtuDisplay.SelectInputVectors = ['POINTS', 'Base0_total']
 basesAndMean_total_19basesvtuDisplay.WriteLog = ''
 
 # init the 'PiecewiseFunction' selected for 'ScaleTransferFunction'
@@ -171,7 +171,7 @@ calculator1 = Calculator(registrationName='Calculator1', Input=basesAndMean_tota
 calculator1.Function = ''
 
 # Properties modified on calculator1
-calculator1.Function = 'Mean-1835.977244744856*Base0-4020.1868125881056*Base1-1761.3323038954372*Base2+972.0952450449845*Base3+638.7500754734808*Base4+617.6556332534561*Base5+666.5008914550156*Base6-602.8693311192545*Base7+221.6197347628428*Base8-589.2407767447528*Base9+612.8529871311732*Base10+178.95545725719398*Base11-20.721528660218933*Base12-418.1801871459541*Base13+551.5875279406702*Base14+190.94793894506833*Base15+791.3346626073784*Base16+83.68250265674467*Base17-2.311911773134057e-11*Base18'
+calculator1.Function = 'Mean_total+12746.116458475502*Base0_total+6065.490794005528*Base1_total-3036.776264129076*Base2_total-4752.298047339564*Base3_total+2837.541111618645*Base4_total-2907.6275635742504*Base5_total-2270.3310940361343*Base6_total+100.73608895576167*Base7_total+1552.9915517407187*Base8_total-1975.0549786781064*Base9_total-47.774393388192244*Base10_total+2779.754800407091*Base11_total+427.4031162706656*Base12_total+1546.2606048771577*Base13_total-1238.0388793595835*Base14_total+1670.5290585225143*Base15_total+389.0368500405928*Base16_total-775.2059362443188*Base17_total+96.62317416553053*Base18_total+85.57370051791074*Base19_total+0.7484176030249596*Base20_total-30.66628979670887*Base21_total-39.034096164362445*Base22_total+41.20469957164792*Base23_total+39.9852196668184*Base24_total-668.8464112373712*Base25_total'
 
 # show data in view
 calculator1Display = Show(calculator1, renderView1, 'UnstructuredGridRepresentation')
@@ -182,22 +182,22 @@ calculator1Display.ColorArrayName = [None, '']
 calculator1Display.SelectTCoordArray = 'None'
 calculator1Display.SelectNormalArray = 'None'
 calculator1Display.SelectTangentArray = 'None'
-calculator1Display.OSPRayScaleArray = 'Base0'
+calculator1Display.OSPRayScaleArray = 'Base0_total'
 calculator1Display.OSPRayScaleFunction = 'PiecewiseFunction'
 calculator1Display.SelectOrientationVectors = 'Result'
 calculator1Display.ScaleFactor = 400.0
-calculator1Display.SelectScaleArray = 'Base0'
+calculator1Display.SelectScaleArray = 'Base0_total'
 calculator1Display.GlyphType = 'Arrow'
-calculator1Display.GlyphTableIndexArray = 'Base0'
+calculator1Display.GlyphTableIndexArray = 'Base0_total'
 calculator1Display.GaussianRadius = 20.0
-calculator1Display.SetScaleArray = ['POINTS', 'Base0']
+calculator1Display.SetScaleArray = ['POINTS', 'Base0_total']
 calculator1Display.ScaleTransferFunction = 'PiecewiseFunction'
-calculator1Display.OpacityArray = ['POINTS', 'Base0']
+calculator1Display.OpacityArray = ['POINTS', 'Base0_total']
 calculator1Display.OpacityTransferFunction = 'PiecewiseFunction'
 calculator1Display.DataAxesGrid = 'GridAxesRepresentation'
 calculator1Display.PolarAxes = 'PolarAxesRepresentation'
 calculator1Display.ScalarOpacityUnitDistance = 27.775292883875284
-calculator1Display.OpacityArrayName = ['POINTS', 'Base0']
+calculator1Display.OpacityArrayName = ['POINTS', 'Base0_total']
 calculator1Display.SelectInputVectors = ['POINTS', 'Result']
 calculator1Display.WriteLog = ''
 
@@ -242,17 +242,17 @@ slice1Display.ColorArrayName = [None, '']
 slice1Display.SelectTCoordArray = 'None'
 slice1Display.SelectNormalArray = 'None'
 slice1Display.SelectTangentArray = 'None'
-slice1Display.OSPRayScaleArray = 'Base0'
+slice1Display.OSPRayScaleArray = 'Base0_total'
 slice1Display.OSPRayScaleFunction = 'PiecewiseFunction'
 slice1Display.SelectOrientationVectors = 'Result'
 slice1Display.ScaleFactor = 399.99992675781255
-slice1Display.SelectScaleArray = 'Base0'
+slice1Display.SelectScaleArray = 'Base0_total'
 slice1Display.GlyphType = 'Arrow'
-slice1Display.GlyphTableIndexArray = 'Base0'
+slice1Display.GlyphTableIndexArray = 'Base0_total'
 slice1Display.GaussianRadius = 19.999996337890625
-slice1Display.SetScaleArray = ['POINTS', 'Base0']
+slice1Display.SetScaleArray = ['POINTS', 'Base0_total']
 slice1Display.ScaleTransferFunction = 'PiecewiseFunction'
-slice1Display.OpacityArray = ['POINTS', 'Base0']
+slice1Display.OpacityArray = ['POINTS', 'Base0_total']
 slice1Display.OpacityTransferFunction = 'PiecewiseFunction'
 slice1Display.DataAxesGrid = 'GridAxesRepresentation'
 slice1Display.PolarAxes = 'PolarAxesRepresentation'
@@ -289,7 +289,6 @@ resultPWF = GetOpacityTransferFunction('Result')
 # get 2D transfer function for 'Result'
 resultTF2D = GetTransferFunction2D('Result')
 
-slice1 = GetActiveSource()
 renderView1 = GetActiveViewOrCreate('RenderView')
 slice1Display = GetDisplayProperties(slice1, view=renderView1)
 
@@ -393,37 +392,67 @@ renderView1.Update()
 
 
 angles = [0, 18, 37, 56, 75, 94, 113, 132 ,151 ,170, 189, 208, 227, 246, 265, 284, 303, 322, 341]
-angles.append(360) # Adds the angle 360 to cover the whole range
-Coeffs = pd.read_csv("/home/boris/OpenFOAM/boris-v2206/run/ROM/Own_code/coeffs.csv",header=None)
-Coeffs=Coeffs.to_numpy() 
-Coeffs=np.vstack((Coeffs,Coeffs[0,:])) # Add the value 0 of coefficient to 360 (periodic solutions verified in the ipynb)
-f_interpolated=[]
+velocities= [5, 10 , 15]
+Coeffs = pd.read_csv("./coeffstotal.csv",header=None)
+Coeffs=Coeffs.to_numpy()
+
+angles.append(360)
+
+Coeffs5=Coeffs[0:19,:]
+Coeffs5=np.vstack((Coeffs5,Coeffs5[0,:]))
+
+Coeffs10=Coeffs[19:38,:]
+Coeffs10=np.vstack((Coeffs10,Coeffs10[0,:]))
+
+Coeffs15=Coeffs[38:57,:]
+Coeffs15=np.vstack((Coeffs15,Coeffs15[0,:]))
 
 
-for i in range(0,19):
-    f_interpolated.append(interpolate.interp1d(angles, Coeffs[:,i], 'cubic')) # Calculate each interpolation function for each coefficient
 
 
-def update_slice(wind_direction):
+f_interpolated_5=[]
+f_interpolated_10=[]
+f_interpolated_15=[]
 
-    Text=["Mean"]
-    nb_bases=20
-    coeffs_interpolated=[]
-    coeffs_interpolated=[f(wind_direction) for f in f_interpolated] # Calculate the coefficient for a given wind direction
+nb_bases=26
 
-    i=0
-    for i in range(nb_bases-1): # Generates the text that will be passed to the Calculator with each coefficient for each base
+for i in range(nb_bases):
+    f_interpolated_5.append(interpolate.interp1d(angles, Coeffs5[:,i], 'cubic')) # Calculate each interpolation function for each coefficient
+    f_interpolated_10.append(interpolate.interp1d(angles, Coeffs10[:,i], 'cubic')) # Calculate each interpolation function for each coefficient
+    f_interpolated_15.append(interpolate.interp1d(angles, Coeffs15[:,i], 'cubic')) # Calculate each interpolation function for each coefficient
+
+
+def update_slice(wind_direction,wind_value):
+
+
+    Text=["Mean_total"]
+    nb_bases=26
+    coeffs_interpolated_5=[]
+    coeffs_interpolated_10=[]
+    coeffs_interpolated_15=[]
+    f_interpolated_velo=[]
+
+    coeffs_interpolated_5=[f(wind_direction) for f in f_interpolated_5] # Calculate the coefficient for a given wind direction
+    coeffs_interpolated_10=[f(wind_direction) for f in f_interpolated_10] # Calculate the coefficient for a given wind direction
+    coeffs_interpolated_15=[f(wind_direction) for f in f_interpolated_15] # Calculate the coefficient for a given wind direction
+
+    for k in range(len(coeffs_interpolated_5)):
+        f_interpolated_velo.append(interpolate.interp1d(velocities, [coeffs_interpolated_5[k],coeffs_interpolated_10[k],coeffs_interpolated_15[k]], 'quadratic')) # Interpolate one function per coeff (26). Each function is basically f(theta,V) where f= coefficient of the mode
+
+    coeffs_interpolated=[f(wind_value) for f in f_interpolated_velo]
+
+    
+    for i in range(nb_bases): # Generates the text that will be passed to the Calculator with each coefficient for each base
         if coeffs_interpolated[i] > 0:
             Text.append("+")
-            Text.append("{0}*Base{1}".format(coeffs_interpolated[i],i))
+            Text.append("{0}*Base{1}_total".format(coeffs_interpolated[i],i))
                         
         if coeffs_interpolated[i] < 0:
-            Text.append("{0}*Base{1}".format(coeffs_interpolated[i],i))
+            Text.append("{0}*Base{1}_total".format(coeffs_interpolated[i],i))
 
     calculator1.Function = '{0}'.format(''.join(Text))
 
     UpdatePipeline() # Update the view
-    slice1 = GetActiveSource()
     renderView1 = GetActiveViewOrCreate('RenderView')
     slice1Display = GetDisplayProperties(slice1, view=renderView1)
 
@@ -520,7 +549,7 @@ f.write("1")
                 injection_data = pd.read_csv("/home/boris/OpenFOAM/boris-v2206/run/Clean/Marina_Particles/points_data.csv") # CSV with info about the injection and time simulation
                 wind_direction=injection_data.loc[0,'Velocity direction']
                 wind_value=injection_data.loc[0,'Velocity magnitude']
-                update_slice(wind_direction)
+                update_slice(wind_direction,wind_value)
             except:
                 simulation_time=0
 
@@ -540,19 +569,19 @@ f.write("1")
                 renderView1 = GetActiveViewOrCreate('RenderView')
                 Hide(slice1,renderView1)
                 Show(tableToPoints1, renderView1, 'GeometryRepresentation')
-                update_slice(wind_direction)
+                update_slice(wind_direction,wind_value)
             elif coms.loc[0, 'slice']:
                 slice1=FindSource("Slice1")
                 renderView1 = GetActiveViewOrCreate('RenderView')
                 Show(slice1, renderView1, 'GeometryRepresentation')
                 Show(tableToPoints1, renderView1, 'GeometryRepresentation')
-                update_slice(wind_direction)
+                update_slice(wind_direction,wind_value)
 
 
             if p_wind_direction !=  wind_direction or p_wind_value != wind_value:
                 p_wind_direction=wind_direction
                 p_wind_value=wind_value
-                update_slice(wind_direction)
+                update_slice(wind_direction,wind_value)
                 
 
 

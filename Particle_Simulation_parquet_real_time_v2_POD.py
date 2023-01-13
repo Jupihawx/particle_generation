@@ -45,6 +45,7 @@ while True: # The code is running constantly, either because then pvpython does 
             Delete(programmableSource1)
             Delete(tableToPoints1)
             Delete(resampleWithDataset1)
+            Delete(passArrays1)
             Delete(calculator1)
             Delete(basesAndMean_total_19basesvtu)
         except:
@@ -82,15 +83,20 @@ while True: # The code is running constantly, either because then pvpython does 
         wind_direction=injection_data.loc[current_case,'Velocity direction']
         wind_value=injection_data.loc[current_case,'Velocity magnitude']
 
-        basesAndMean_total_19basesvtu = XMLUnstructuredGridReader(registrationName='BasesAndMean_total_19bases.vtu', FileName=['/home/boris/OpenFOAM/boris-v2206/run/ROM/Own_code/BasesAndMean_total_19bases.vtu'])
+        basesAndMean_total_19basesvtu = XMLUnstructuredGridReader(registrationName='BasesAndMean_total_19bases.vtu', FileName=['/home/boris/OpenFOAM/boris-v2206/run/ROM/Own_code/BasesAndMean_total_25bases_Total.vtu'])
         basesAndMean_total_19basesvtu.CellArrayStatus = ['']
-        basesAndMean_total_19basesvtu.PointArrayStatus = ['Mean', 'Base0', 'Base1', 'Base2', 'Base3', 'Base4', 'Base5', 'Base6', 'Base7', 'Base8', 'Base9', 'Base10', 'Base11', 'Base12', 'Base13', 'Base14', 'Base15', 'Base16', 'Base17', 'Base18']
+        basesAndMean_total_19basesvtu.PointArrayStatus = ['Mean_total', 'Base0_total', 'Base1_total', 'Base2_total', 'Base3_total', 'Base4_total', 'Base5_total', 'Base6_total', 'Base7_total', 'Base8_total', 'Base9_total', 'Base10_total', 'Base11_total', 'Base12_total', 'Base13_total', 'Base14_total', 'Base15_total', 'Base16_total', 'Base17_total', 'Base18_total', 'Base19_total', 'Base20_total', 'Base21_total', 'Base22_total', 'Base23_total', 'Base24_total', 'Base25_total']
         basesAndMean_total_19basesvtu.TimeArray = 'None'
 
         
 
         calculator1 = Calculator(registrationName='Calculator1', Input=basesAndMean_total_19basesvtu)
-        calculator1.Function = '1000*Base0'
+        calculator1.Function = '1000*Base0_total'
+
+        passArrays1 = PassArrays(registrationName='PassArrays1', Input=calculator1) # We do not need the bases anymore, so this stop it from being passed down the Pipeline
+        passArrays1.PointDataArrays = ['Result']
+        passArrays1.CellDataArrays = []
+        passArrays1.FieldDataArrays = ['CasePath']
 
 
         def moving_injection_position(destination_point, time): # Format imput : [[x y z t];[x1 y1 z1 t1]]
@@ -143,7 +149,7 @@ output.RowData.append(data.values[:,2], "Z")
         tableToPoints1.ZColumn = 'Z'
 
         # create a new 'Resample With Dataset'
-        resampleWithDataset1 = ResampleWithDataset(registrationName='ResampleWithDataset1', SourceDataArrays=calculator1, # This filter takes the particles and the field as input, and outputs the velocity of each particle. This is the main usage of paraview for getting the velocity at a given point, but it would be nice in the future to have another more efficient program to do so.
+        resampleWithDataset1 = ResampleWithDataset(registrationName='ResampleWithDataset1', SourceDataArrays=passArrays1, # This filter takes the particles and the field as input, and outputs the velocity of each particle. This is the main usage of paraview for getting the velocity at a given point, but it would be nice in the future to have another more efficient program to do so.
             DestinationMesh=tableToPoints1)
         resampleWithDataset1.CellLocator = 'Static Cell Locator'
 
@@ -203,24 +209,36 @@ output.RowData.append(data.values[:,2], "Z")
             return particles+noise 
 
 
-        def update_velocity_field(wind_direction):
-            Text=["Mean"]
-            nb_bases=20
-            coeffs_interpolated=[]
-            coeffs_interpolated=[f(wind_direction) for f in f_interpolated] # Calculate the coefficient for a given wind direction
+        def update_velocity_field(wind_direction,wind_value):
 
-            i=0
-            for i in range(nb_bases-1): # Generates the text that will be passed to the Calculator with each coefficient for each base
+            Text=["Mean_total"]
+            nb_bases=26
+            coeffs_interpolated_5=[]
+            coeffs_interpolated_10=[]
+            coeffs_interpolated_15=[]
+            f_interpolated_velo=[]
+
+            coeffs_interpolated_5=[f(wind_direction) for f in f_interpolated_5] # Calculate the coefficient for a given wind direction
+            coeffs_interpolated_10=[f(wind_direction) for f in f_interpolated_10] # Calculate the coefficient for a given wind direction
+            coeffs_interpolated_15=[f(wind_direction) for f in f_interpolated_15] # Calculate the coefficient for a given wind direction
+
+            for k in range(len(coeffs_interpolated_5)):
+                f_interpolated_velo.append(interpolate.interp1d(velocities, [coeffs_interpolated_5[k],coeffs_interpolated_10[k],coeffs_interpolated_15[k]], 'quadratic')) # Interpolate one function per coeff (26). Each function is basically f(theta,V) where f= coefficient of the mode
+
+            coeffs_interpolated=[f(wind_value) for f in f_interpolated_velo]
+
+            
+            for i in range(nb_bases): # Generates the text that will be passed to the Calculator with each coefficient for each base
                 if coeffs_interpolated[i] > 0:
                     Text.append("+")
-                    Text.append("{0}*Base{1}".format(coeffs_interpolated[i],i))
+                    Text.append("{0}*Base{1}_total".format(coeffs_interpolated[i],i))
                                 
                 if coeffs_interpolated[i] < 0:
-                    Text.append("{0}*Base{1}".format(coeffs_interpolated[i],i))
+                    Text.append("{0}*Base{1}_total".format(coeffs_interpolated[i],i))
 
             calculator1.Function = '{0}'.format(''.join(Text))
 
-
+            print(calculator1.Function)
 
 
 
@@ -229,20 +247,36 @@ output.RowData.append(data.values[:,2], "Z")
 
         # Calculate the interpolation functions
         angles = [0, 18, 37, 56, 75, 94, 113, 132 ,151 ,170, 189, 208, 227, 246, 265, 284, 303, 322, 341]
+        velocities=[5,10,15]
         angles.append(360) # Adds the angle 360 to cover the whole range
-        Coeffs = pd.read_csv("/home/boris/OpenFOAM/boris-v2206/run/ROM/Own_code/coeffs.csv",header=None)
+        Coeffs = pd.read_csv("/home/boris/OpenFOAM/boris-v2206/run/ROM/Own_code/coeffstotal.csv",header=None)
         Coeffs=Coeffs.to_numpy() 
-        Coeffs=np.vstack((Coeffs,Coeffs[0,:])) # Add the value 0 of coefficient to 360 (periodic solutions verified in the ipynb)
-        f_interpolated=[]
+
+        Coeffs5=Coeffs[0:19,:]
+        Coeffs5=np.vstack((Coeffs5,Coeffs5[0,:]))
+
+        Coeffs10=Coeffs[19:38,:]
+        Coeffs10=np.vstack((Coeffs10,Coeffs10[0,:]))
+
+        Coeffs15=Coeffs[38:57,:]
+        Coeffs15=np.vstack((Coeffs15,Coeffs15[0,:]))
+
+        f_interpolated_5=[]
+        f_interpolated_10=[]
+        f_interpolated_15=[]
 
 
-        for i in range(0,19):
-            f_interpolated.append(interpolate.interp1d(angles, Coeffs[:,i], 'cubic')) # Calculate each interpolation function for each coefficient
+        nb_bases=26
+
+        for i in range(nb_bases):
+            f_interpolated_5.append(interpolate.interp1d(angles, Coeffs5[:,i], 'cubic')) # Calculate each interpolation function for each coefficient
+            f_interpolated_10.append(interpolate.interp1d(angles, Coeffs10[:,i], 'cubic')) # Calculate each interpolation function for each coefficient
+            f_interpolated_15.append(interpolate.interp1d(angles, Coeffs15[:,i], 'cubic')) # Calculate each interpolation function for each coefficient
 
 
         generate_init(injection_position,injection_radius,injection_amount,current_case,current_time) 
 
-        update_velocity_field(wind_direction)
+        update_velocity_field(wind_direction,wind_value)
         
         vtk_data=sm.Fetch(resampleWithDataset1) # This is the key commmand that gets the info from paraview, but also the slowest in this script since it calls for UpdatePipeline() in the client side of paraview, which takes time and explain why the code is not fully real time.
         vtk_data = dsa.WrapDataObject(vtk_data)
@@ -336,7 +370,7 @@ output.RowData.append(data.values[:,2], "Z")
                 if p_wind_direction != wind_direction or p_injection_amount != injection_amount or p_injection_radius != injection_radius or p_injection_position != injection_position or p_coefficient_diffusion != coefficient_diffusion or p_wind_value != wind_value:
                     i=current_time  # Simulate in advance. Creates a small delay in the vizualization, but is beneficial since it gives a small head-start to the backend
                    
-                    update_velocity_field(wind_direction)
+                    update_velocity_field(wind_direction,wind_value)
 
                     shutil.copyfile("csv{1}/particles_positions_{0}.parquet".format(i,current_case),"csv{0}/particles_positions.parquet".format(str(current_case))) # Copy the requested time as the current time
         
@@ -375,7 +409,7 @@ output.RowData.append(data.values[:,2], "Z")
                 tableToPoints1.ZColumn = 'Z'
 
                 # create a new 'Resample With Dataset'
-                resampleWithDataset1 = ResampleWithDataset(registrationName='ResampleWithDataset1', SourceDataArrays=calculator1,
+                resampleWithDataset1 = ResampleWithDataset(registrationName='ResampleWithDataset1', SourceDataArrays=passArrays1,
                     DestinationMesh=tableToPoints1)
                 resampleWithDataset1.CellLocator = 'Static Cell Locator'
                 
@@ -385,8 +419,8 @@ output.RowData.append(data.values[:,2], "Z")
 
                 vtk_data = dsa.WrapDataObject(vtk_data)
 
-                data = vtk_data.PointData[20] # Way of probing in paraview
-
+                data = vtk_data.PointData[0] # Way of probing in paraview
+        
 
                 ### This part creates calculates the position from the probed points above (python side) and writes it down to parquet files ###
 

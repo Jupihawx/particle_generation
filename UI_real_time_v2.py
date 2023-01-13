@@ -144,7 +144,7 @@ w6.pack()
 w7 = Scale(master, from_=0, to=360,orient=HORIZONTAL,length=300, label='Velocity direction (°)',width=20, command=write_values)
 w7.set(df.loc[0, 'Velocity direction'])
 w7.pack()
-w8 = Scale(master, from_=0, to=15,orient=HORIZONTAL,length=300, label='Velocity magnitude (m/s)',width=20, command=write_values)
+w8 = Scale(master, from_=5, to=15,orient=HORIZONTAL,length=300, label='Velocity magnitude (m/s)',width=20, command=write_values)
 w8.set(df.loc[0, 'Velocity magnitude'])
 w8.pack()
 
